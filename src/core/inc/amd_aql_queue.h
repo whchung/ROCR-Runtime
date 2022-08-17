@@ -199,6 +199,8 @@ class AqlQueue : public core::Queue, private core::LocalSignal, public core::Doo
   // @brief Submits a block of PM4 and waits until it has been executed.
   void ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) override;
 
+  void ExecutePM4NOP() override;
+
   /// @brief Update signal value using Relaxed semantics
   void StoreRelaxed(hsa_signal_value_t value) override;
 

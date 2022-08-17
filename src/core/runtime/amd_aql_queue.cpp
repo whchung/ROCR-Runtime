@@ -1139,6 +1139,14 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
   return HSA_STATUS_SUCCESS;
 }
 
+void AqlQueue::ExecutePM4NOP() {
+  // Construct a no-op PM4 command.
+  printf("Execute 1 NOP PM4 packet\n");
+  constexpr uint32_t pm4_nop_size_dw = 1;
+  uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
+  ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+}
+
 void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
   printf("ExecutePM4 IN\n");
 

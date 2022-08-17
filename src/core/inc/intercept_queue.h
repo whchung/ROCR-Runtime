@@ -123,6 +123,9 @@ class QueueWrapper : public Queue {
   void ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) override {
     wrapped->ExecutePM4(cmd_data, cmd_size_b);
   }
+  void ExecutePM4NOP() override {
+    wrapped->ExecutePM4NOP();
+  }
   void SetProfiling(bool enabled) override { wrapped->SetProfiling(enabled); }
 
  protected:

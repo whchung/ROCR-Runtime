@@ -156,6 +156,10 @@ class HostQueue : public Queue {
     assert(false && "HostQueue::ExecutePM4 is unimplemented");
   }
 
+  void ExecutePM4NOP() override {
+    assert(false && "HostQueue::ExecutePM4NOP is not implemetned");
+  }
+
   void* operator new(size_t size) {
     return _aligned_malloc(size, HSA_QUEUE_ALIGN_BYTES);
   }
