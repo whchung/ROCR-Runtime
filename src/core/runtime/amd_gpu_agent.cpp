@@ -1465,6 +1465,14 @@ void GpuAgent::BindTrapHandler() {
   assert(err == HSAKMT_STATUS_SUCCESS && "hsaKmtSetTrapHandler() failed");
 }
 
+void GpuAgent::ExecutePM4NOP() {
+  // Construct a no-op PM4 command.
+  printf("Execute 1 NOP PM4 packet\n");
+  constexpr uint32_t pm4_nop_size_dw = 1;
+  uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, isa_->GetMajorVersion()) };
+  queues_[QueueUtility]->ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+}
+
 void GpuAgent::InvalidateCodeCaches() {
   // Check for microcode cache invalidation support.
   // This is deprecated in later microcode builds.
@@ -1512,6 +1520,8 @@ void GpuAgent::InvalidateCodeCaches() {
 
   // Submit the command to the utility queue and wait for it to complete.
   queues_[QueueUtility]->ExecutePM4(cache_inv, cache_inv_size_dw * sizeof(uint32_t));
+
+  ExecutePM4NOP();
 }
 
 lazy_ptr<core::Blit>& GpuAgent::GetXgmiBlit(const core::Agent& dst_agent) {

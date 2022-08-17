@@ -271,6 +271,8 @@ class GpuAgent : public GpuAgentInt {
   // @brief Override from AMD::GpuAgentInt.
   void InvalidateCodeCaches() override;
 
+  void ExecutePM4NOP();
+
   // @brief Override from AMD::GpuAgentInt.
   bool current_coherency_type(hsa_amd_coherency_type_t type) override;
 
