@@ -1140,6 +1140,8 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
+  printf("ExecutePM4 IN\n");
+
   // pm4_ib_buf_ is a shared resource, so mutually exclude here.
   ScopedAcquire<KernelMutex> lock(&pm4_ib_mutex_);
 
@@ -1257,6 +1259,7 @@ void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
   while (queue->LoadReadIndexRelaxed() <= write_idx) {
     os::YieldThread();
   }
+  printf("ExecutePM4 OUT\n");
 }
 
 // @brief Define the Scratch Buffer Descriptor and related parameters
