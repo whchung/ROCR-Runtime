@@ -1512,8 +1512,6 @@ void GpuAgent::InvalidateCodeCaches() {
 
   // Submit the command to the utility queue and wait for it to complete.
   queues_[QueueUtility]->ExecutePM4(cache_inv, cache_inv_size_dw * sizeof(uint32_t));
-
-  queues_[QueueUtility]->ExecutePM4NOP();
 }
 
 lazy_ptr<core::Blit>& GpuAgent::GetXgmiBlit(const core::Agent& dst_agent) {
