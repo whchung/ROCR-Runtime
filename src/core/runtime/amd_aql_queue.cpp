@@ -1164,6 +1164,13 @@ void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
   assert(cmd_size_b < pm4_ib_size_b_ && "PM4 exceeds IB size");
   memcpy(pm4_ib_buf_, cmd_data, cmd_size_b);
 
+  // Construct a no-op PM4 command, add it into IB.
+  printf("Add 1 NOP PM4 packet\n");
+  constexpr uint32_t pm4_nop_size_dw = 1;
+  uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
+  memcpy(pm4_ib_buf_ + cmd_size_b, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  cmd_size_b += (pm4_nop_size_dw * sizeof(uint32_t));
+
   // Construct a PM4 command to execute the IB.
   constexpr uint32_t ib_jump_size_dw = 4;
 
