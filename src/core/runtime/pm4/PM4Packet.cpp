@@ -21,14 +21,14 @@
  *
  */
 
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
+#include <cstdint>
+#include <cstddef>
+#include <cstring>
+#include <cstdlib>
 #include "PM4Packet.hpp"
 #include "hsakmttypes.h"
-#include "KFDBaseComponentTest.hpp"
 
-#include "asic_reg/gfx_7_2_enum.h"
+#include "core/inc/asic_reg/gfx_7_2_enum.h"
 
 unsigned int PM4Packet::CalcCountValue() const {
     return (SizeInDWords() - (sizeof(PM4_TYPE_3_HEADER) / sizeof(uint32_t)) - 1);
@@ -55,7 +55,7 @@ void PM4WriteDataPacket::InitPacket(unsigned int *destBuf, void *data) {
     m_pPacketData->bitfields2.dst_sel      = dst_sel_mec_write_data_MEMORY_5;  // memory-async
     m_pPacketData->bitfields2.addr_incr    = addr_incr_mec_write_data_INCREMENT_ADDR_0;  // increment addr
     m_pPacketData->bitfields2.wr_confirm   = wr_confirm_mec_write_data_WAIT_FOR_CONFIRMATION_1;
-    m_pPacketData->bitfields2.atc          = is_dgpu() ?
+    m_pPacketData->bitfields2.atc          = true ?
         atc_write_data_NOT_USE_ATC_0 : atc_write_data_USE_ATC_1;
     m_pPacketData->bitfields2.cache_policy = cache_policy_mec_write_data_BYPASS_2;
 
@@ -97,7 +97,7 @@ void PM4ReleaseMemoryPacket::InitPacketCI(bool isPolling, uint64_t address,
     pkt->bitfields2.l2_wb            = 1;
     pkt->bitfields2.l2_inv           = 1;
     pkt->bitfields2.cache_policy     = cache_policy_mec_release_mem_BYPASS_2;
-    pkt->bitfields2.atc = is_dgpu() ?
+    pkt->bitfields2.atc = true ?
                     atc_mec_release_mem_ci_NOT_USE_ATC_0 :
                     atc_mec_release_mem_ci_USE_ATC_1;  // ATC setting for fences and timestamps to the MC or TCL2.
     pkt->bitfields3.dst_sel          = dst_sel_mec_release_mem_MEMORY_CONTROLLER_0;
@@ -231,28 +231,6 @@ void PM4ReleaseMemoryPacket::InitPacketNV(bool isPolling, uint64_t address,
     pkt->int_ctxid = static_cast<uint32_t>(data);
 }
 
-PM4IndirectBufPacket::PM4IndirectBufPacket(IndirectBuffer *pIb) {
-    InitPacket(pIb);
-}
-
-unsigned int PM4IndirectBufPacket::SizeInBytes() const {
-    return sizeof(PM4MEC_INDIRECT_BUFFER);
-}
-
-void PM4IndirectBufPacket::InitPacket(IndirectBuffer *pIb) {
-    memset(&m_packetData, 0, SizeInBytes());
-    InitPM4Header(m_packetData.header,  IT_INDIRECT_BUFFER);
-
-    m_packetData.bitfields2.ib_base_lo = static_cast<HSAuint32>((reinterpret_cast<HSAuint64>(pIb->Addr()))) >> 2;
-    m_packetData.bitfields3.ib_base_hi = reinterpret_cast<HSAuint64>(pIb->Addr()) >> 32;
-    m_packetData.bitfields4.ib_size          = pIb->SizeInDWord();
-    m_packetData.bitfields4.chain            = 0;
-    m_packetData.bitfields4.offload_polling  = 0;
-    m_packetData.bitfields4.volatile_setting = 0;
-    m_packetData.bitfields4.valid            = 1;
-    m_packetData.bitfields4.vmid             = 0;  // in iommutest:  vmid = queueParams.VMID;
-    m_packetData.bitfields4.cache_policy     = cache_policy_indirect_buffer_BYPASS_2;
-}
 PM4AcquireMemoryPacket::PM4AcquireMemoryPacket(unsigned int familyId):m_pPacketData(NULL)
 {
     m_FamilyId = familyId;

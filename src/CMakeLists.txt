@@ -189,7 +189,11 @@ set ( SRCS core/util/lnx/os_linux.cpp
            libamdhsacode/amd_hsa_code_util.cpp
            libamdhsacode/amd_hsa_locks.cpp
            libamdhsacode/amd_options.cpp
-           libamdhsacode/amd_hsa_code.cpp )
+           libamdhsacode/amd_hsa_code.cpp
+
+	   core/runtime/pm4/BasePacket.cpp
+	   core/runtime/pm4/PM4Packet.cpp
+	   )
 
 target_sources( ${CORE_RUNTIME_TARGET} PRIVATE ${SRCS} )
 

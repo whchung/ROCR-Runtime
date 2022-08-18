@@ -21,6 +21,7 @@
  *
  */
 
+#include <cstdlib>
 #include "BasePacket.hpp"
 #include "KFDTestUtil.hpp"
 
