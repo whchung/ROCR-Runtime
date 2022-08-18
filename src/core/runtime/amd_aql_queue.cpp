@@ -1140,8 +1140,6 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::ExecutePM4NOP() {
-  printf("Execute 4 NOP PM4 packet inside an IB\n");
-
   // Construct several NOP PM4 commands.
   constexpr uint32_t pm4_nop_size_dw = 1;
   uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
@@ -1166,14 +1164,14 @@ void AqlQueue::ExecutePM4NOP() {
       (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(pm4_nop_size_dw)) |
        PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
 
+  printf("Execute IB->4 NOP inside an IB inside an AQL queue\n");
+
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
 
   agent_->system_deallocator()(pm4_ib_buf_);
 }
 
 void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
-  printf("ExecutePM4 IN\n");
-
   // pm4_ib_buf_ is a shared resource, so mutually exclude here.
   ScopedAcquire<KernelMutex> lock(&pm4_ib_mutex_);
 
@@ -1291,7 +1289,6 @@ void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
   while (queue->LoadReadIndexRelaxed() <= write_idx) {
     os::YieldThread();
   }
-  printf("ExecutePM4 OUT\n");
 }
 
 // @brief Define the Scratch Buffer Descriptor and related parameters
