@@ -1140,11 +1140,29 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::ExecutePM4NOP() {
-  // Construct a no-op PM4 command.
-  printf("Execute 1 NOP PM4 packet\n");
+  printf("Execute 1 NOP PM4 packet inside an IB\n");
+
+  // Construct an NOP PM4 command.
   constexpr uint32_t pm4_nop_size_dw = 1;
   uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
-  ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+
+  //ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+
+  void* pm4_ib_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
+  memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+
+  // Construct an INDIRECT_BUFFER PM4 command.
+  constexpr uint32_t ib_size_dw = 4;
+  uint32_t ib_cmd[ib_size_dw] = {
+      PM4_HDR(PM4_HDR_IT_OPCODE_INDIRECT_BUFFER, ib_size_dw, agent_->isa()->GetMajorVersion()),
+      PM4_INDIRECT_BUFFER_DW1_IB_BASE_LO(uint32_t(uintptr_t(pm4_ib_buf_) >> 2)),
+      PM4_INDIRECT_BUFFER_DW2_IB_BASE_HI(uint32_t(uintptr_t(pm4_ib_buf_) >> 32)),
+      (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(pm4_nop_size_dw)) |
+       PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
+
+  ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
+
+  agent_->system_deallocator()(pm4_ib_buf_);
 }
 
 void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
