@@ -71,6 +71,8 @@
 #include "core/inc/asic_reg/gfx_7_2_d.h"
 #include "core/inc/asic_reg/gfx_7_2_sh_mask.h"
 
+#include "core/runtime/pm4/PM4Packet.hpp"
+
 namespace rocr {
 namespace AMD {
 // Queue::amd_queue_ is cache-aligned for performance.
@@ -1154,6 +1156,9 @@ void AqlQueue::BuildIb() {
   constexpr uint32_t arg3 = 0;
   constexpr uint32_t arg4 = 0;
   constexpr uint32_t arg5 = 0;
+  constexpr uint32_t m_DimX = 1;
+  constexpr uint32_t m_DimY = 1;
+  constexpr uint32_t m_DimZ = 1;
   constexpr uint32_t m_BlockX = 256;
   constexpr uint32_t m_BlockY = 1;
   constexpr uint32_t m_BlockZ = 1;
@@ -1214,24 +1219,6 @@ void AqlQueue::BuildIb() {
       0
   };
 
-  // Starts at COMPUTE_RESOURCE_LIMITS
-  const unsigned int COMPUTE_RESOURCE_LIMITS[] = {
-      0,   // COMPUTE_RESOURCE_LIMITS
-  };
-
-  // Starts at COMPUTE_TMPRING_SIZE
-  const unsigned int COMPUTE_TMPRING_SIZE[] = {
-      0,   // COMPUTE_TMPRING_SIZE
-  };
-
-  // Starts at COMPUTE_RESTART_X
-  const unsigned int COMPUTE_RESTART_VALUES[] = {
-      0,                      // COMPUTE_RESTART_X
-      0,                      // COMPUTE_RESTART_Y
-      0,                      // COMPUTE_RESTART_Z
-      0                       // COMPUTE_THREAD_TRACE_ENABLE
-  };
-
   // Starts at COMPUTE_USER_DATA_0
   const unsigned int COMPUTE_USER_DATA_VALUES[] = {
                   // Reg name
@@ -1258,43 +1245,62 @@ void AqlQueue::BuildIb() {
   // ORDERED_APPEND_MODE=0, USE_THREAD_DIMENSIONS=1, ORDER_MODE=0, DISPATCH_CACHE_CNTL=0,
   // SCALAR_L1_INV_VOL=0, VECTOR_L1_INV_VOL=0, DATA_ATC=?, RESTORE=0}
 
+  void* pm4_ib_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
+  uint32_t packetBytes = 0;
 
-//    m_IndirectBuf.AddPacket(PM4AcquireMemoryPacket(m_FamilyId));
-//
-//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_START_X, COMPUTE_DISPATCH_DIMS_VALUES,
-//                                                  ARRAY_SIZE(COMPUTE_DISPATCH_DIMS_VALUES)));
-//
-//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_PGM_LO,
-//        (m_FamilyId >= FAMILY_AI) ? COMPUTE_PGM_VALUES_GFX9 : COMPUTE_PGM_VALUES_GFX8,
-//        (m_FamilyId >= FAMILY_AI) ? ARRAY_SIZE(COMPUTE_PGM_VALUES_GFX9) : ARRAY_SIZE(COMPUTE_PGM_VALUES_GFX8)));
-//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_PGM_RSRC1, COMPUTE_PGM_RSRC,
-//                                                  ARRAY_SIZE(COMPUTE_PGM_RSRC)));
-//
-//    if (m_FamilyId == FAMILY_AL) {
-//#define COMPUTE_PGM_RSRC3__ACCUM_OFFSET__SHIFT 0x0
-//#define COMPUTE_PGM_RSRC3__TG_SPLIT__SHIFT     0x10
-//#define COMPUTE_PGM_RSRC3__ACCUM_OFFSET_MASK   0x0000003FL
-//#define COMPUTE_PGM_RSRC3__TG_SPLIT__MASK      0x00010000L
-////; COMPUTE_PGM_RSRC3_GFX90A:ACCUM_OFFSET: 10
-////; COMPUTE_PGM_RSRC3_GFX90A:TG_SPLIT: 0
-//        const unsigned int COMPUTE_PGM_RSRC3[] = {10};
-//        m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_PGM_RSRC3, COMPUTE_PGM_RSRC3,
-//                                                      ARRAY_SIZE(COMPUTE_PGM_RSRC3)));
-//    }
+  PM4AcquireMemoryPacket p0(FAMILY_AL);
+  memcpy(pm4_ib_buf_, p0.GetPacket(), p0.SizeInBytes());
+  packetBytes += p0.SizeInBytes();
 
-//    // m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_RESOURCE_LIMITS, COMPUTE_RESOURCE_LIMITS,
-//    //                                               ARRAY_SIZE(COMPUTE_RESOURCE_LIMITS)));
-//    // m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_TMPRING_SIZE, COMPUTE_TMPRING_SIZE,
-//    //                                               ARRAY_SIZE(COMPUTE_TMPRING_SIZE)));
-//    // m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_RESTART_X, COMPUTE_RESTART_VALUES,
-//    //                                               ARRAY_SIZE(COMPUTE_RESTART_VALUES)));
-//
-//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_USER_DATA_0, COMPUTE_USER_DATA_VALUES,
-//                                                  ARRAY_SIZE(COMPUTE_USER_DATA_VALUES)));
-//
-//    m_IndirectBuf.AddPacket(PM4DispatchDirectPacket(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE));
+  PM4SetShaderRegPacket p1(mmCOMPUTE_START_X, COMPUTE_DISPATCH_DIMS_VALUES, ARRAY_SIZE(COMPUTE_DISPATCH_DIMS_VALUES));
+  memcpy(pm4_ib_buf_ + packetBytes, p1.GetPacket(), p1.SizeInBytes());
+  packetBytes += p1.SizeInBytes();
 
-//    m_IndirectBuf.AddPacket(PM4PartialFlushPacket());
+  PM4SetShaderRegPacket p2(mmCOMPUTE_PGM_LO, COMPUTE_PGM_VALUES_GFX9, ARRAY_SIZE(COMPUTE_PGM_VALUES_GFX9));
+  memcpy(pm4_ib_buf_ + packetBytes, p2.GetPacket(), p2.SizeInBytes());
+  packetBytes += p2.SizeInBytes();
+
+  PM4SetShaderRegPacket p3(mmCOMPUTE_PGM_RSRC1, COMPUTE_PGM_RSRC, ARRAY_SIZE(COMPUTE_PGM_RSRC));
+  memcpy(pm4_ib_buf_ + packetBytes, p3.GetPacket(), p3.SizeInBytes());
+  packetBytes += p3.SizeInBytes();
+
+  #define COMPUTE_PGM_RSRC3__ACCUM_OFFSET__SHIFT 0x0
+  #define COMPUTE_PGM_RSRC3__TG_SPLIT__SHIFT     0x10
+  #define COMPUTE_PGM_RSRC3__ACCUM_OFFSET_MASK   0x0000003FL
+  #define COMPUTE_PGM_RSRC3__TG_SPLIT__MASK      0x00010000L
+  //; COMPUTE_PGM_RSRC3_GFX90A:ACCUM_OFFSET: 10
+  //; COMPUTE_PGM_RSRC3_GFX90A:TG_SPLIT: 0
+  const unsigned int COMPUTE_PGM_RSRC3[] = {10};
+  PM4SetShaderRegPacket p4(mmCOMPUTE_PGM_RSRC3, COMPUTE_PGM_RSRC3, ARRAY_SIZE(COMPUTE_PGM_RSRC3));
+  memcpy(pm4_ib_buf_ + packetBytes, p4.GetPacket(), p4.SizeInBytes());
+  packetBytes += p4.SizeInBytes();
+
+  PM4SetShaderRegPacket p5(mmCOMPUTE_USER_DATA_0, COMPUTE_USER_DATA_VALUES, ARRAY_SIZE(COMPUTE_USER_DATA_VALUES));
+  memcpy(pm4_ib_buf_ + packetBytes, p5.GetPacket(), p5.SizeInBytes());
+  packetBytes += p5.SizeInBytes();
+
+  //PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
+  //memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
+  //packetBytes += p6.SizeInBytes();
+
+  PM4PartialFlushPacket p7;
+  memcpy(pm4_ib_buf_ + packetBytes, p7.GetPacket(), p7.SizeInBytes());
+  packetBytes += p7.SizeInBytes();
+
+  // Construct an INDIRECT_BUFFER PM4 command.
+  constexpr uint32_t ib_size_dw = 4;
+  uint32_t ib_cmd[ib_size_dw] = {
+      PM4_HDR(PM4_HDR_IT_OPCODE_INDIRECT_BUFFER, ib_size_dw, agent_->isa()->GetMajorVersion()),
+      PM4_INDIRECT_BUFFER_DW1_IB_BASE_LO(uint32_t(uintptr_t(pm4_ib_buf_) >> 2)),
+      PM4_INDIRECT_BUFFER_DW2_IB_BASE_HI(uint32_t(uintptr_t(pm4_ib_buf_) >> 32)),
+      (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(packetBytes / sizeof(uint32_t))) |
+       PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
+
+  printf("Execute IB->ACQUIRE_MEM+SET_SH_REG inside an IB inside an AQL queue\n");
+
+  ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
+
+  agent_->system_deallocator()(pm4_ib_buf_);
 }
 
 void AqlQueue::ExecutePM4NOP() {

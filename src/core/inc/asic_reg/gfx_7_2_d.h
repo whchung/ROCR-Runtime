@@ -2554,4 +2554,6 @@
 #define ixDIDT_TCP_WEIGHT4_7                                                    0x71
 #define ixDIDT_TCP_WEIGHT8_11                                                   0x72
 
+#define mmCOMPUTE_PGM_RSRC3                                                     0x2e2d
+
 #endif /* GFX_7_2_D_H */
