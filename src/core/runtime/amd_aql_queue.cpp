@@ -68,6 +68,9 @@
 #include "core/inc/hsa_ext_amd_impl.h"
 #include "core/inc/amd_gpu_pm4.h"
 
+#include "core/inc/asic_reg/gfx_7_2_d.h"
+#include "core/inc/asic_reg/gfx_7_2_sh_mask.h"
+
 namespace rocr {
 namespace AMD {
 // Queue::amd_queue_ is cache-aligned for performance.
@@ -1137,6 +1140,161 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
   }
   memcpy(cu_mask, &cu_mask_[0], sizeof(uint32_t) * user_dword_count);
   return HSA_STATUS_SUCCESS;
+}
+
+void AqlQueue::BuildIb() {
+  // Parameters need to be set:
+  // - ISA address.
+  // - Kernel arguments: A/B/C
+  // - Block size: X/Y/Z
+  constexpr uint64_t shiftedIsaAddr = 0;
+  constexpr uint32_t arg0 = 0;
+  constexpr uint32_t arg1 = 0;
+  constexpr uint32_t arg2 = 0;
+  constexpr uint32_t arg3 = 0;
+  constexpr uint32_t arg4 = 0;
+  constexpr uint32_t arg5 = 0;
+  constexpr uint32_t m_BlockX = 256;
+  constexpr uint32_t m_BlockY = 1;
+  constexpr uint32_t m_BlockZ = 1;
+
+  // Starts at COMPUTE_START_X
+  unsigned int COMPUTE_DISPATCH_DIMS_VALUES[] = {
+      0,      // START_X
+      0,      // START_Y
+      0,      // START_Z
+      1,      // NUM_THREADS_X - this is actually the number of threads in a thread group
+      1,      // NUM_THREADS_Y
+      1,      // NUM_THREADS_Z
+      0,      // COMPUTE_PIPELINESTAT_ENABLE
+      0,      // COMPUTE_PERFCOUNT_ENABLE
+  };
+  COMPUTE_DISPATCH_DIMS_VALUES[3] = m_BlockX;
+  COMPUTE_DISPATCH_DIMS_VALUES[4] = m_BlockY;
+  COMPUTE_DISPATCH_DIMS_VALUES[5] = m_BlockZ;
+
+  unsigned int pgmRsrc2 = 0;
+  pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__SCRATCH_EN__SHIFT)
+          & COMPUTE_PGM_RSRC2__SCRATCH_EN_MASK;
+  pgmRsrc2 |= (6 << COMPUTE_PGM_RSRC2__USER_SGPR__SHIFT)
+          & COMPUTE_PGM_RSRC2__USER_SGPR_MASK;
+  pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__TRAP_PRESENT__SHIFT)
+          & COMPUTE_PGM_RSRC2__TRAP_PRESENT_MASK;
+  pgmRsrc2 |= (1 << COMPUTE_PGM_RSRC2__TGID_X_EN__SHIFT)
+          & COMPUTE_PGM_RSRC2__TGID_X_EN_MASK;
+  pgmRsrc2 |= (1 << COMPUTE_PGM_RSRC2__TGID_Y_EN__SHIFT)
+          & COMPUTE_PGM_RSRC2__TGID_Y_EN_MASK;
+  pgmRsrc2 |= (1 << COMPUTE_PGM_RSRC2__TGID_Z_EN__SHIFT)
+          & COMPUTE_PGM_RSRC2__TGID_Z_EN_MASK;
+  pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__TG_SIZE_EN__SHIFT)
+          & COMPUTE_PGM_RSRC2__TG_SIZE_EN_MASK;
+  pgmRsrc2 |= (2 << COMPUTE_PGM_RSRC2__TIDIG_COMP_CNT__SHIFT)
+          & COMPUTE_PGM_RSRC2__TIDIG_COMP_CNT_MASK;
+  pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__EXCP_EN__SHIFT)
+          & COMPUTE_PGM_RSRC2__EXCP_EN_MASK;
+  pgmRsrc2 |= (0x13 << COMPUTE_PGM_RSRC2__LDS_SIZE__SHIFT)
+          & COMPUTE_PGM_RSRC2__LDS_SIZE_MASK;
+  pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__EXCP_EN_MSB__SHIFT)
+          & COMPUTE_PGM_RSRC2__EXCP_EN_MSB_MASK;
+
+  const unsigned int COMPUTE_PGM_RSRC[] = {
+      // PGM_RSRC1 = { VGPRS: 52 (44+8) SGPRS: 32 PRIORITY: 0 FLOAT_MODE: 240 PRIV: 0
+      // DX10_CLAMP: 0 DEBUG_MODE: 0 IEEE_MODE: 1 BULKY: 0 CDBG_USER: 0 }
+      0x004f808d,
+      pgmRsrc2
+  };
+
+  // Starts at COMPUTE_PGM_LO
+  const unsigned int COMPUTE_PGM_VALUES_GFX9[] = {
+      static_cast<uint32_t>(shiftedIsaAddr),                  // PGM_LO
+      static_cast<uint32_t>(shiftedIsaAddr >> 32),            // PGM_HI
+      0,
+      0,
+      0,
+      0
+  };
+
+  // Starts at COMPUTE_RESOURCE_LIMITS
+  const unsigned int COMPUTE_RESOURCE_LIMITS[] = {
+      0,   // COMPUTE_RESOURCE_LIMITS
+  };
+
+  // Starts at COMPUTE_TMPRING_SIZE
+  const unsigned int COMPUTE_TMPRING_SIZE[] = {
+      0,   // COMPUTE_TMPRING_SIZE
+  };
+
+  // Starts at COMPUTE_RESTART_X
+  const unsigned int COMPUTE_RESTART_VALUES[] = {
+      0,                      // COMPUTE_RESTART_X
+      0,                      // COMPUTE_RESTART_Y
+      0,                      // COMPUTE_RESTART_Z
+      0                       // COMPUTE_THREAD_TRACE_ENABLE
+  };
+
+  // Starts at COMPUTE_USER_DATA_0
+  const unsigned int COMPUTE_USER_DATA_VALUES[] = {
+                  // Reg name
+      arg0,       // COMPUTE_USER_DATA_0
+      arg1,       // COMPUTE_USER_DATA_1
+      arg2,       // COMPUTE_USER_DATA_2
+      arg3,       // COMPUTE_USER_DATA_3
+      arg4,       // COMPUTE_USER_DATA_4
+      arg5,       // COMPUTE_USER_DATA_5
+      0,          // COMPUTE_USER_DATA_6
+      0,          // COMPUTE_USER_DATA_7
+      0,          // COMPUTE_USER_DATA_8
+      0,          // COMPUTE_USER_DATA_9
+      0,          // COMPUTE_USER_DATA_10
+      0,          // COMPUTE_USER_DATA_11
+      0,          // COMPUTE_USER_DATA_12
+      0,          // COMPUTE_USER_DATA_13
+      0,          // COMPUTE_USER_DATA_14
+      0xCAFEBABE, // COMPUTE_USER_DATA_15
+  };
+
+  const unsigned int DISPATCH_INIT_VALUE = 0x00000021;
+  // {COMPUTE_SHADER_EN=1, PARTIAL_TG_EN=0, FORCE_START_AT_000=0, ORDERED_APPEND_ENBL=0,
+  // ORDERED_APPEND_MODE=0, USE_THREAD_DIMENSIONS=1, ORDER_MODE=0, DISPATCH_CACHE_CNTL=0,
+  // SCALAR_L1_INV_VOL=0, VECTOR_L1_INV_VOL=0, DATA_ATC=?, RESTORE=0}
+
+
+//    m_IndirectBuf.AddPacket(PM4AcquireMemoryPacket(m_FamilyId));
+//
+//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_START_X, COMPUTE_DISPATCH_DIMS_VALUES,
+//                                                  ARRAY_SIZE(COMPUTE_DISPATCH_DIMS_VALUES)));
+//
+//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_PGM_LO,
+//        (m_FamilyId >= FAMILY_AI) ? COMPUTE_PGM_VALUES_GFX9 : COMPUTE_PGM_VALUES_GFX8,
+//        (m_FamilyId >= FAMILY_AI) ? ARRAY_SIZE(COMPUTE_PGM_VALUES_GFX9) : ARRAY_SIZE(COMPUTE_PGM_VALUES_GFX8)));
+//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_PGM_RSRC1, COMPUTE_PGM_RSRC,
+//                                                  ARRAY_SIZE(COMPUTE_PGM_RSRC)));
+//
+//    if (m_FamilyId == FAMILY_AL) {
+//#define COMPUTE_PGM_RSRC3__ACCUM_OFFSET__SHIFT 0x0
+//#define COMPUTE_PGM_RSRC3__TG_SPLIT__SHIFT     0x10
+//#define COMPUTE_PGM_RSRC3__ACCUM_OFFSET_MASK   0x0000003FL
+//#define COMPUTE_PGM_RSRC3__TG_SPLIT__MASK      0x00010000L
+////; COMPUTE_PGM_RSRC3_GFX90A:ACCUM_OFFSET: 10
+////; COMPUTE_PGM_RSRC3_GFX90A:TG_SPLIT: 0
+//        const unsigned int COMPUTE_PGM_RSRC3[] = {10};
+//        m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_PGM_RSRC3, COMPUTE_PGM_RSRC3,
+//                                                      ARRAY_SIZE(COMPUTE_PGM_RSRC3)));
+//    }
+
+//    // m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_RESOURCE_LIMITS, COMPUTE_RESOURCE_LIMITS,
+//    //                                               ARRAY_SIZE(COMPUTE_RESOURCE_LIMITS)));
+//    // m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_TMPRING_SIZE, COMPUTE_TMPRING_SIZE,
+//    //                                               ARRAY_SIZE(COMPUTE_TMPRING_SIZE)));
+//    // m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_RESTART_X, COMPUTE_RESTART_VALUES,
+//    //                                               ARRAY_SIZE(COMPUTE_RESTART_VALUES)));
+//
+//    m_IndirectBuf.AddPacket(PM4SetShaderRegPacket(mmCOMPUTE_USER_DATA_0, COMPUTE_USER_DATA_VALUES,
+//                                                  ARRAY_SIZE(COMPUTE_USER_DATA_VALUES)));
+//
+//    m_IndirectBuf.AddPacket(PM4DispatchDirectPacket(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE));
+
+//    m_IndirectBuf.AddPacket(PM4PartialFlushPacket());
 }
 
 void AqlQueue::ExecutePM4NOP() {

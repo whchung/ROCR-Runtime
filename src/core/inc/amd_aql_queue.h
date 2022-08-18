@@ -201,6 +201,8 @@ class AqlQueue : public core::Queue, private core::LocalSignal, public core::Doo
 
   void ExecutePM4NOP() override;
 
+  void BuildIb();
+
   /// @brief Update signal value using Relaxed semantics
   void StoreRelaxed(hsa_signal_value_t value) override;
 
