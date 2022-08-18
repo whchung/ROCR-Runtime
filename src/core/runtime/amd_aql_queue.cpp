@@ -1140,16 +1140,22 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::ExecutePM4NOP() {
-  printf("Execute 1 NOP PM4 packet inside an IB\n");
+  printf("Execute 4 NOP PM4 packet inside an IB\n");
 
-  // Construct an NOP PM4 command.
+  // Construct several NOP PM4 commands.
   constexpr uint32_t pm4_nop_size_dw = 1;
   uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
+  uint32_t pm4_nop_cmd1[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
+  uint32_t pm4_nop_cmd2[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
+  uint32_t pm4_nop_cmd3[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
 
   //ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
 
   void* pm4_ib_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
   memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t), pm4_nop_cmd1, pm4_nop_size_dw * sizeof(uint32_t));
+  memcpy(pm4_ib_buf_ + pm4_nop_size_dw * 2 * sizeof(uint32_t), pm4_nop_cmd2, pm4_nop_size_dw * sizeof(uint32_t));
+  memcpy(pm4_ib_buf_ + pm4_nop_size_dw * 3 * sizeof(uint32_t), pm4_nop_cmd3, pm4_nop_size_dw * sizeof(uint32_t));
 
   // Construct an INDIRECT_BUFFER PM4 command.
   constexpr uint32_t ib_size_dw = 4;
