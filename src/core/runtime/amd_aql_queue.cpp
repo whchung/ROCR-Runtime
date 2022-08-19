@@ -1147,23 +1147,32 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::BuildIb() {
+#define M (16)
+#define N (1152)
+#define K (5120)
+#define SIZEOFA (M * K * 2)
+#define SIZEOFB (K * N * 2)
+#define SIZEOFC (M * N * 2)
+
 #define PAGE_SIZE (0x1000)
 #define PAGE_ALIGN (0x1000)
-#define GRID_SIZE_X (512)
-#define BLOCK_SIZE_X (8)
-  void* pm4_a_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-  void* pm4_b_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-  void* pm4_c_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-  memset(pm4_a_buf_, 0, PAGE_SIZE);
-  memset(pm4_b_buf_, 0, PAGE_SIZE);
-  memset(pm4_c_buf_, 0, PAGE_SIZE);
-  for (uint32_t i = 0; i < PAGE_SIZE / sizeof(uint32_t); ++i) {
-    reinterpret_cast<uint32_t*>(pm4_a_buf_)[i] = 1;
-    reinterpret_cast<uint32_t*>(pm4_b_buf_)[i] = 2;
+#define GRID_SIZE_X (9 * 256)
+#define BLOCK_SIZE_X (256)
+  void* pm4_a_buf_ = agent_->system_allocator()(SIZEOFA, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  void* pm4_b_buf_ = agent_->system_allocator()(SIZEOFB, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  void* pm4_c_buf_ = agent_->system_allocator()(SIZEOFC, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  memset(pm4_a_buf_, 0, SIZEOFA);
+  memset(pm4_b_buf_, 0, SIZEOFB);
+  memset(pm4_c_buf_, 0, SIZEOFC);
+  for (uint32_t i = 0; i < SIZEOFA / sizeof(uint32_t); ++i) {
+    reinterpret_cast<uint32_t*>(pm4_a_buf_)[i] = 0x40004000; // 2.0 (half) / 2.0 (half)
+  }
+  for (uint32_t i = 0; i < SIZEOFB / sizeof(uint32_t); ++i) {
+    reinterpret_cast<uint32_t*>(pm4_b_buf_)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
   }
 
   void* pm4_isa_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, VECTOR_GROUP_ADD_ISA, sizeof(VECTOR_GROUP_ADD_ISA));
+  memcpy(pm4_isa_buf_, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
    
   // Parameters need to be set:
   // - ISA address.
@@ -1328,11 +1337,8 @@ void AqlQueue::BuildIb() {
   //  printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_b_buf_)[i]);
   //}
   //printf("\n");
-  for (uint32_t i = 0; i < GRID_SIZE_X; i += BLOCK_SIZE_X) {
-    for (uint32_t j = 0; j < BLOCK_SIZE_X; ++j) {
-      printf("0x%02X ", reinterpret_cast<uint32_t*>(pm4_c_buf_)[i+j]);
-    }
-    printf("\n");
+  for (uint32_t i = 0; i < SIZEOFC / sizeof(uint32_t); ++i) {
+    printf("0x%02X ", reinterpret_cast<uint32_t*>(pm4_c_buf_)[i]);
   }
   printf("\n");
 
