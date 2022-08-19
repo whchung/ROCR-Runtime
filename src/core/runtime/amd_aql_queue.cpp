@@ -1147,20 +1147,27 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::BuildIb() {
+  void* pm4_a_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateNoFlags);
+  void* pm4_b_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateNoFlags);
+  void* pm4_c_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateNoFlags);
+  memset(pm4_a_buf_, 0, 0x1000);
+  memset(pm4_b_buf_, 0, 0x1000);
+  memset(pm4_c_buf_, 0, 0x1000);
+
   void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, NOOP_ISA, sizeof(NOOP_ISA));
+  memcpy(pm4_isa_buf_, CUSTOM_SGPR_ISA, sizeof(CUSTOM_SGPR_ISA));
    
   // Parameters need to be set:
   // - ISA address.
   // - Kernel arguments: A/B/C
   // - Block size: X/Y/Z
   uint64_t shiftedIsaAddr = reinterpret_cast<uint64_t>(pm4_isa_buf_) >> 8;
-  constexpr uint32_t arg0 = 0;
-  constexpr uint32_t arg1 = 0;
-  constexpr uint32_t arg2 = 0;
-  constexpr uint32_t arg3 = 0;
-  constexpr uint32_t arg4 = 0;
-  constexpr uint32_t arg5 = 0;
+  uint32_t arg0 = reinterpret_cast<uint64_t>(pm4_c_buf_) & 0xFFFFFFFF;
+  uint32_t arg1 = reinterpret_cast<uint64_t>(pm4_c_buf_) >> 32;
+  uint32_t arg2 = reinterpret_cast<uint64_t>(pm4_a_buf_) & 0xFFFFFFFF;
+  uint32_t arg3 = reinterpret_cast<uint64_t>(pm4_a_buf_) >> 32;
+  uint32_t arg4 = reinterpret_cast<uint64_t>(pm4_b_buf_) & 0xFFFFFFFF;
+  uint32_t arg5 = reinterpret_cast<uint64_t>(pm4_b_buf_) >> 32;
   constexpr uint32_t m_DimX = 1;
   constexpr uint32_t m_DimY = 1;
   constexpr uint32_t m_DimZ = 1;
@@ -1186,7 +1193,7 @@ void AqlQueue::BuildIb() {
   unsigned int pgmRsrc2 = 0;
   pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__SCRATCH_EN__SHIFT)
           & COMPUTE_PGM_RSRC2__SCRATCH_EN_MASK;
-  pgmRsrc2 |= (6 << COMPUTE_PGM_RSRC2__USER_SGPR__SHIFT)
+  pgmRsrc2 |= (/*6*/ 16 << COMPUTE_PGM_RSRC2__USER_SGPR__SHIFT)
           & COMPUTE_PGM_RSRC2__USER_SGPR_MASK;
   pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__TRAP_PRESENT__SHIFT)
           & COMPUTE_PGM_RSRC2__TRAP_PRESENT_MASK;
@@ -1305,8 +1312,16 @@ void AqlQueue::BuildIb() {
 
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
 
+  printf("0x%08X\n", reinterpret_cast<uint32_t*>(pm4_a_buf_)[0]);
+  printf("0x%08X\n", reinterpret_cast<uint32_t*>(pm4_b_buf_)[0]);
+  printf("0x%08X\n", reinterpret_cast<uint32_t*>(pm4_c_buf_)[0]);
+
   agent_->system_deallocator()(pm4_ib_buf_);
   agent_->system_deallocator()(pm4_isa_buf_);
+
+  agent_->system_deallocator()(pm4_a_buf_);
+  agent_->system_deallocator()(pm4_b_buf_);
+  agent_->system_deallocator()(pm4_c_buf_);
 }
 
 void AqlQueue::ExecutePM4NOP() {
