@@ -1147,11 +1147,14 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::BuildIb() {
+  void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
+  memcpy(pm4_isa_buf_, NOOP_ISA, ARRAY_SIZE(NOOP_ISA));
+   
   // Parameters need to be set:
   // - ISA address.
   // - Kernel arguments: A/B/C
   // - Block size: X/Y/Z
-  constexpr uint64_t shiftedIsaAddr = 0;
+  uint64_t shiftedIsaAddr = reinterpret_cast<uint64_t>(pm4_isa_buf_) >> 8;
   constexpr uint32_t arg0 = 0;
   constexpr uint32_t arg1 = 0;
   constexpr uint32_t arg2 = 0;
@@ -1161,7 +1164,7 @@ void AqlQueue::BuildIb() {
   constexpr uint32_t m_DimX = 1;
   constexpr uint32_t m_DimY = 1;
   constexpr uint32_t m_DimZ = 1;
-  constexpr uint32_t m_BlockX = 256;
+  constexpr uint32_t m_BlockX = 1;
   constexpr uint32_t m_BlockY = 1;
   constexpr uint32_t m_BlockZ = 1;
 
@@ -1281,9 +1284,9 @@ void AqlQueue::BuildIb() {
   memcpy(pm4_ib_buf_ + packetBytes, p5.GetPacket(), p5.SizeInBytes());
   packetBytes += p5.SizeInBytes();
 
-  //PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
-  //memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
-  //packetBytes += p6.SizeInBytes();
+  PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
+  memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
+  packetBytes += p6.SizeInBytes();
 
   PM4PartialFlushPacket p7;
   memcpy(pm4_ib_buf_ + packetBytes, p7.GetPacket(), p7.SizeInBytes());
