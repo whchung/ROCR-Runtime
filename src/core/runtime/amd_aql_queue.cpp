@@ -1284,9 +1284,9 @@ void AqlQueue::BuildIb() {
   memcpy(pm4_ib_buf_ + packetBytes, p5.GetPacket(), p5.SizeInBytes());
   packetBytes += p5.SizeInBytes();
 
-  PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
-  memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
-  packetBytes += p6.SizeInBytes();
+  //PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
+  //memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
+  //packetBytes += p6.SizeInBytes();
 
   PM4PartialFlushPacket p7;
   memcpy(pm4_ib_buf_ + packetBytes, p7.GetPacket(), p7.SizeInBytes());
@@ -1301,7 +1301,7 @@ void AqlQueue::BuildIb() {
       (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(packetBytes / sizeof(uint32_t))) |
        PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
 
-  printf("Execute IB->ACQUIRE_MEM+SET_SH_REG inside an IB inside an AQL queue\n");
+  printf("Execute IB->ACQUIRE_MEM+SET_SH_REG+DIRECT_DISPATCH+WRITE_DATA inside an IB inside an AQL queue\n");
 
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
 
@@ -1309,6 +1309,8 @@ void AqlQueue::BuildIb() {
 }
 
 void AqlQueue::ExecutePM4NOP() {
+  return BuildIb();
+
   // Construct several NOP PM4 commands.
   constexpr uint32_t pm4_nop_size_dw = 1;
   uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
