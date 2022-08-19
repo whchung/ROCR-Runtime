@@ -1148,7 +1148,7 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 
 void AqlQueue::BuildIb() {
   void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, NOOP_ISA, ARRAY_SIZE(NOOP_ISA));
+  memcpy(pm4_isa_buf_, NOOP_ISA, sizeof(NOOP_ISA));
    
   // Parameters need to be set:
   // - ISA address.
@@ -1284,9 +1284,9 @@ void AqlQueue::BuildIb() {
   memcpy(pm4_ib_buf_ + packetBytes, p5.GetPacket(), p5.SizeInBytes());
   packetBytes += p5.SizeInBytes();
 
-  //PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
-  //memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
-  //packetBytes += p6.SizeInBytes();
+  PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
+  memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
+  packetBytes += p6.SizeInBytes();
 
   PM4PartialFlushPacket p7;
   memcpy(pm4_ib_buf_ + packetBytes, p7.GetPacket(), p7.SizeInBytes());
