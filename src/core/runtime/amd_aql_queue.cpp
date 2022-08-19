@@ -1153,9 +1153,10 @@ void AqlQueue::BuildIb() {
   memset(pm4_a_buf_, 0, 0x1000);
   memset(pm4_b_buf_, 0, 0x1000);
   memset(pm4_c_buf_, 0, 0x1000);
+  reinterpret_cast<uint32_t*>(pm4_a_buf_)[0] = 0xCAFEBABE >> 1;
 
   void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, CUSTOM_SGPR_ISA, sizeof(CUSTOM_SGPR_ISA));
+  memcpy(pm4_isa_buf_, SCALAR_SET_ISA, sizeof(SCALAR_SET_ISA));
    
   // Parameters need to be set:
   // - ISA address.
