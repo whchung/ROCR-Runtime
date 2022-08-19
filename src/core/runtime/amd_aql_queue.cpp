@@ -1149,7 +1149,7 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 void AqlQueue::BuildIb() {
 #define PAGE_SIZE (0x1000)
 #define PAGE_ALIGN (0x1000)
-#define GRID_SIZE_X (256)
+#define GRID_SIZE_X (512)
 #define BLOCK_SIZE_X (8)
   void* pm4_a_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
   void* pm4_b_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
@@ -1163,7 +1163,7 @@ void AqlQueue::BuildIb() {
   }
 
   void* pm4_isa_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, VECTOR_GROUP_SET_ISA, sizeof(VECTOR_GROUP_SET_ISA));
+  memcpy(pm4_isa_buf_, VECTOR_GROUP_ADD_ISA, sizeof(VECTOR_GROUP_ADD_ISA));
    
   // Parameters need to be set:
   // - ISA address.
@@ -1330,7 +1330,7 @@ void AqlQueue::BuildIb() {
   //printf("\n");
   for (uint32_t i = 0; i < GRID_SIZE_X; i += BLOCK_SIZE_X) {
     for (uint32_t j = 0; j < BLOCK_SIZE_X; ++j) {
-      printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_c_buf_)[i+j]);
+      printf("0x%02X ", reinterpret_cast<uint32_t*>(pm4_c_buf_)[i+j]);
     }
     printf("\n");
   }
