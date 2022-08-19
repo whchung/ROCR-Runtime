@@ -1159,7 +1159,7 @@ void AqlQueue::BuildIb() {
   }
 
   void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, VECTOR_SET_ISA, sizeof(VECTOR_SET_ISA));
+  memcpy(pm4_isa_buf_, VECTOR_ADD_ISA, sizeof(VECTOR_ADD_ISA));
    
   // Parameters need to be set:
   // - ISA address.
