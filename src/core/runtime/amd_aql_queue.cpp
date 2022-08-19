@@ -1147,18 +1147,20 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 }
 
 void AqlQueue::BuildIb() {
-  void* pm4_a_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateNoFlags);
-  void* pm4_b_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateNoFlags);
-  void* pm4_c_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateNoFlags);
-  memset(pm4_a_buf_, 0, 0x1000);
-  memset(pm4_b_buf_, 0, 0x1000);
-  memset(pm4_c_buf_, 0, 0x1000);
-  for (uint32_t i = 0; i < 0x1000 / sizeof(uint32_t); ++i) {
+#define PAGE_SIZE (0x1000)
+#define PAGE_ALIGN (0x1000)
+  void* pm4_a_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  void* pm4_b_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  void* pm4_c_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  memset(pm4_a_buf_, 0, PAGE_SIZE);
+  memset(pm4_b_buf_, 0, PAGE_SIZE);
+  memset(pm4_c_buf_, 0, PAGE_SIZE);
+  for (uint32_t i = 0; i < PAGE_SIZE / sizeof(uint32_t); ++i) {
     reinterpret_cast<uint32_t*>(pm4_a_buf_)[i] = 1;
     reinterpret_cast<uint32_t*>(pm4_b_buf_)[i] = 2;
   }
 
-  void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
+  void* pm4_isa_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
   memcpy(pm4_isa_buf_, VECTOR_ADD_ISA, sizeof(VECTOR_ADD_ISA));
    
   // Parameters need to be set:
@@ -1261,7 +1263,7 @@ void AqlQueue::BuildIb() {
   // ORDERED_APPEND_MODE=0, USE_THREAD_DIMENSIONS=1, ORDER_MODE=0, DISPATCH_CACHE_CNTL=0,
   // SCALAR_L1_INV_VOL=0, VECTOR_L1_INV_VOL=0, DATA_ATC=?, RESTORE=0}
 
-  void* pm4_ib_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
+  void* pm4_ib_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
   uint32_t packetBytes = 0;
 
   PM4AcquireMemoryPacket p0(FAMILY_AL);
@@ -1349,7 +1351,7 @@ void AqlQueue::ExecutePM4NOP() {
 
   //ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
 
-  void* pm4_ib_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
+  void* pm4_ib_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
   memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
   memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t), pm4_nop_cmd1, pm4_nop_size_dw * sizeof(uint32_t));
   memcpy(pm4_ib_buf_ + pm4_nop_size_dw * 2 * sizeof(uint32_t), pm4_nop_cmd2, pm4_nop_size_dw * sizeof(uint32_t));
