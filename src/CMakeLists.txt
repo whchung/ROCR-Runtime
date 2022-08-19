@@ -193,6 +193,7 @@ set ( SRCS core/util/lnx/os_linux.cpp
 
 	   core/runtime/pm4/BasePacket.cpp
 	   core/runtime/pm4/PM4Packet.cpp
+           core/runtime/isa/isablobs.cpp
 	   )
 
 target_sources( ${CORE_RUNTIME_TARGET} PRIVATE ${SRCS} )
