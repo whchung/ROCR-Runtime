@@ -73,6 +73,8 @@
 
 #include "core/runtime/pm4/PM4Packet.hpp"
 
+#include "core/runtime/isa/isablobs.hpp"
+
 namespace rocr {
 namespace AMD {
 // Queue::amd_queue_ is cache-aligned for performance.

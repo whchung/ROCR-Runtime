@@ -21,7 +21,9 @@
  *
  */
 
-#include <algorithm>
+#ifndef _ISAGENERATOR_ALDEBARAN_H_
+#define _ISAGENERATOR_ALDEBARAN_H_
+
 #include <string>
 
 const uint32_t NOOP_ISA[] = {
@@ -2906,3 +2908,5 @@ const uint32_t GEMM_ISA_B2B[] = {
 0xE0741080, 0x80000004, // buffer_store_dwordx2 v[0:1], v4, s[0:3], 0 offen offset:128    // 000000000630: 
 0xBF810000              // s_endpgm                                                       // 000000000638: 
 };
+
+#endif  // _ISAGENERATOR_ALDEBARAN_H_
