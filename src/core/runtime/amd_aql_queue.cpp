@@ -1159,7 +1159,7 @@ void AqlQueue::BuildIb() {
   }
 
   void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, SCALAR_ADD_ISA, sizeof(SCALAR_ADD_ISA));
+  memcpy(pm4_isa_buf_, VECTOR_SET_ISA, sizeof(VECTOR_SET_ISA));
    
   // Parameters need to be set:
   // - ISA address.
@@ -1172,10 +1172,10 @@ void AqlQueue::BuildIb() {
   uint32_t arg3 = reinterpret_cast<uint64_t>(pm4_a_buf_) >> 32;
   uint32_t arg4 = reinterpret_cast<uint64_t>(pm4_b_buf_) & 0xFFFFFFFF;
   uint32_t arg5 = reinterpret_cast<uint64_t>(pm4_b_buf_) >> 32;
-  constexpr uint32_t m_DimX = 1;
+  constexpr uint32_t m_DimX = 64;
   constexpr uint32_t m_DimY = 1;
   constexpr uint32_t m_DimZ = 1;
-  constexpr uint32_t m_BlockX = 1;
+  constexpr uint32_t m_BlockX = 64;
   constexpr uint32_t m_BlockY = 1;
   constexpr uint32_t m_BlockZ = 1;
 
@@ -1316,9 +1316,18 @@ void AqlQueue::BuildIb() {
 
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
 
-  printf("0x%08X\n", reinterpret_cast<uint32_t*>(pm4_a_buf_)[0]);
-  printf("0x%08X\n", reinterpret_cast<uint32_t*>(pm4_b_buf_)[0]);
-  printf("0x%08X\n", reinterpret_cast<uint32_t*>(pm4_c_buf_)[0]);
+  for (uint32_t i = 0; i < 64; ++i) {
+    printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_a_buf_)[i]);
+  }
+  printf("\n");
+  for (uint32_t i = 0; i < 64; ++i) {
+    printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_b_buf_)[i]);
+  }
+  printf("\n");
+  for (uint32_t i = 0; i < 64; ++i) {
+    printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_c_buf_)[i]);
+  }
+  printf("\n");
 
   agent_->system_deallocator()(pm4_ib_buf_);
   agent_->system_deallocator()(pm4_isa_buf_);
