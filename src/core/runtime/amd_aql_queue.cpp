@@ -1153,10 +1153,13 @@ void AqlQueue::BuildIb() {
   memset(pm4_a_buf_, 0, 0x1000);
   memset(pm4_b_buf_, 0, 0x1000);
   memset(pm4_c_buf_, 0, 0x1000);
-  reinterpret_cast<uint32_t*>(pm4_a_buf_)[0] = 0xCAFEBABE >> 1;
+  for (uint32_t i = 0; i < 0x1000 / sizeof(uint32_t); ++i) {
+    reinterpret_cast<uint32_t*>(pm4_a_buf_)[i] = 1;
+    reinterpret_cast<uint32_t*>(pm4_b_buf_)[i] = 2;
+  }
 
   void* pm4_isa_buf_ = agent_->system_allocator()(0x1000, 0x1000, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, SCALAR_SET_ISA, sizeof(SCALAR_SET_ISA));
+  memcpy(pm4_isa_buf_, SCALAR_ADD_ISA, sizeof(SCALAR_ADD_ISA));
    
   // Parameters need to be set:
   // - ISA address.
