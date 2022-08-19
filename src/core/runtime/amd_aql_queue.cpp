@@ -1306,6 +1306,7 @@ void AqlQueue::BuildIb() {
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
 
   agent_->system_deallocator()(pm4_ib_buf_);
+  agent_->system_deallocator()(pm4_isa_buf_);
 }
 
 void AqlQueue::ExecutePM4NOP() {
