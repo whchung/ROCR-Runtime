@@ -1337,10 +1337,10 @@ void AqlQueue::BuildIb() {
   //  printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_b_buf_)[i]);
   //}
   //printf("\n");
-  for (uint32_t i = 0; i < SIZEOFC / sizeof(uint32_t); ++i) {
-    printf("0x%02X ", reinterpret_cast<uint32_t*>(pm4_c_buf_)[i]);
-  }
-  printf("\n");
+  //for (uint32_t i = 0; i < SIZEOFC / sizeof(uint32_t); ++i) {
+  //  printf("0x%02X ", reinterpret_cast<uint32_t*>(pm4_c_buf_)[i]);
+  //}
+  //printf("\n");
 
   agent_->system_deallocator()(pm4_ib_buf_);
   agent_->system_deallocator()(pm4_isa_buf_);
@@ -1351,7 +1351,7 @@ void AqlQueue::BuildIb() {
 }
 
 void AqlQueue::ExecutePM4NOP() {
-  return BuildIb();
+  //return BuildIb();
 
   // Construct several NOP PM4 commands.
   constexpr uint32_t pm4_nop_size_dw = 1;
@@ -1379,7 +1379,12 @@ void AqlQueue::ExecutePM4NOP() {
 
   printf("Execute IB->4 NOP inside an IB inside an AQL queue\n");
 
+  HsaClockCounters t0, t1;
+  hsaKmtGetClockCounters(agent_->node_id(), &t0);
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
+  hsaKmtGetClockCounters(agent_->node_id(), &t1);
+  printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
+  printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
 
   agent_->system_deallocator()(pm4_ib_buf_);
 }
