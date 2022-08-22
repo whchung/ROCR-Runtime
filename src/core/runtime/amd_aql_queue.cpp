@@ -1148,15 +1148,15 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
 
 void AqlQueue::BuildIb() {
 #define M (16)
-#define N (1152)
-#define K (5120)
+#define N (5120)
+#define K (384)
 #define SIZEOFA (M * K * 2)
 #define SIZEOFB (K * N * 2)
 #define SIZEOFC (M * N * 2)
 
 #define PAGE_SIZE (0x1000)
 #define PAGE_ALIGN (0x1000)
-#define GRID_SIZE_X (9 * 256)
+#define GRID_SIZE_X (40 * 256)
 #define BLOCK_SIZE_X (256)
   void* pm4_a_buf_ = agent_->system_allocator()(SIZEOFA, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
   void* pm4_b_buf_ = agent_->system_allocator()(SIZEOFB, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
@@ -1172,7 +1172,7 @@ void AqlQueue::BuildIb() {
   }
 
   void* pm4_isa_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
+  memcpy(pm4_isa_buf_, GEMM_ISA_16_5120_384, sizeof(GEMM_ISA_16_5120_384));
    
   // Parameters need to be set:
   // - ISA address.
