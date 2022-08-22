@@ -1327,7 +1327,12 @@ void AqlQueue::BuildIb() {
 
   printf("Execute IB->ACQUIRE_MEM+SET_SH_REG+DIRECT_DISPATCH+WRITE_DATA inside an IB inside an AQL queue\n");
 
+  HsaClockCounters t0, t1;
+  hsaKmtGetClockCounters(agent_->node_id(), &t0);
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
+  hsaKmtGetClockCounters(agent_->node_id(), &t1);
+  printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
+  printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
 
   //for (uint32_t i = 0; i < 64; ++i) {
   //  printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_a_buf_)[i]);
@@ -1351,7 +1356,7 @@ void AqlQueue::BuildIb() {
 }
 
 void AqlQueue::ExecutePM4NOP() {
-  //return BuildIb();
+  return BuildIb();
 
   // Construct several NOP PM4 commands.
   constexpr uint32_t pm4_nop_size_dw = 1;
