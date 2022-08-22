@@ -1355,6 +1355,7 @@ void AqlQueue::BuildIb(bool dispatch, uint32_t M, uint32_t N, uint32_t K, uint32
 }
 
 void AqlQueue::ExecutePM4NOP() {
+#if 1
 #define TEST_ITERATION (1)
   printf("16/1152/5120\n");
   BuildIb(false, 16, 1152, 5120, 9 * 256, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
@@ -1380,15 +1381,27 @@ void AqlQueue::ExecutePM4NOP() {
     BuildIb(true, 16, 5120, 1280, 40 * 256, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
   }
   return;
+#endif
 
+#if 0
+  // Construct one NOP PM4 command.
+  constexpr uint32_t pm4_nop_size_dw = 1;
+  uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
+  HsaClockCounters t0, t1;
+  hsaKmtGetClockCounters(agent_->node_id(), &t0);
+  ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  hsaKmtGetClockCounters(agent_->node_id(), &t1);
+  printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
+  //printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
+#endif
+
+#if 0
   // Construct several NOP PM4 commands.
   constexpr uint32_t pm4_nop_size_dw = 1;
   uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
   uint32_t pm4_nop_cmd1[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
   uint32_t pm4_nop_cmd2[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
   uint32_t pm4_nop_cmd3[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, agent_->isa()->GetMajorVersion()) };
-
-  //ExecutePM4(pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
 
   void* pm4_ib_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
   memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
@@ -1405,9 +1418,15 @@ void AqlQueue::ExecutePM4NOP() {
       (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(pm4_nop_size_dw)) |
        PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
 
+  HsaClockCounters t0, t1;
+  hsaKmtGetClockCounters(agent_->node_id(), &t0);
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
+  hsaKmtGetClockCounters(agent_->node_id(), &t1);
+  printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
+  //printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
 
   agent_->system_deallocator()(pm4_ib_buf_);
+#endif
 }
 
 void AqlQueue::ExecutePM4(uint32_t* cmd_data, size_t cmd_size_b) {
