@@ -1146,18 +1146,15 @@ hsa_status_t AqlQueue::GetCUMasking(uint32_t num_cu_mask_count, uint32_t* cu_mas
   return HSA_STATUS_SUCCESS;
 }
 
-void AqlQueue::BuildIb() {
-#define M (16)
-#define N (5120)
-#define K (1280)
-#define SIZEOFA (M * K * 2)
-#define SIZEOFB (K * N * 2)
-#define SIZEOFC (M * N * 2)
-
+void AqlQueue::BuildIb(bool dispatch, uint32_t M, uint32_t N, uint32_t K, uint32_t GRID_SIZE_X, const void *isaBuffer, uint32_t isaSize) {
 #define PAGE_SIZE (0x1000)
 #define PAGE_ALIGN (0x1000)
-#define GRID_SIZE_X (40 * 256)
 #define BLOCK_SIZE_X (256)
+
+  uint32_t SIZEOFA = M * K * 2;
+  uint32_t SIZEOFB = K * N * 2;
+  uint32_t SIZEOFC = M * N * 2;
+
   void* pm4_a_buf_ = agent_->system_allocator()(SIZEOFA, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
   void* pm4_b_buf_ = agent_->system_allocator()(SIZEOFB, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
   void* pm4_c_buf_ = agent_->system_allocator()(SIZEOFC, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
@@ -1172,7 +1169,7 @@ void AqlQueue::BuildIb() {
   }
 
   void* pm4_isa_buf_ = agent_->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
-  memcpy(pm4_isa_buf_, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
+  memcpy(pm4_isa_buf_, isaBuffer, isaSize);
    
   // Parameters need to be set:
   // - ISA address.
@@ -1185,7 +1182,7 @@ void AqlQueue::BuildIb() {
   uint32_t arg3 = reinterpret_cast<uint64_t>(pm4_a_buf_) >> 32;
   uint32_t arg4 = reinterpret_cast<uint64_t>(pm4_b_buf_) & 0xFFFFFFFF;
   uint32_t arg5 = reinterpret_cast<uint64_t>(pm4_b_buf_) >> 32;
-  constexpr uint32_t m_DimX = GRID_SIZE_X;
+  uint32_t m_DimX = GRID_SIZE_X;
   constexpr uint32_t m_DimY = 1;
   constexpr uint32_t m_DimZ = 1;
   constexpr uint32_t m_BlockX = BLOCK_SIZE_X;
@@ -1308,9 +1305,11 @@ void AqlQueue::BuildIb() {
   memcpy(pm4_ib_buf_ + packetBytes, p5.GetPacket(), p5.SizeInBytes());
   packetBytes += p5.SizeInBytes();
 
-  PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
-  memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
-  packetBytes += p6.SizeInBytes();
+  if (dispatch) {
+    PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
+    memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
+    packetBytes += p6.SizeInBytes();
+  }
 
   PM4PartialFlushPacket p7;
   memcpy(pm4_ib_buf_ + packetBytes, p7.GetPacket(), p7.SizeInBytes());
@@ -1325,14 +1324,14 @@ void AqlQueue::BuildIb() {
       (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(packetBytes / sizeof(uint32_t))) |
        PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
 
-  printf("Execute IB->ACQUIRE_MEM+SET_SH_REG+DIRECT_DISPATCH+WRITE_DATA inside an IB inside an AQL queue\n");
-
   HsaClockCounters t0, t1;
   hsaKmtGetClockCounters(agent_->node_id(), &t0);
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
   hsaKmtGetClockCounters(agent_->node_id(), &t1);
-  printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
-  printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
+  if (dispatch) {
+    printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
+    //printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
+  }
 
   //for (uint32_t i = 0; i < 64; ++i) {
   //  printf("0x%08X ", reinterpret_cast<uint32_t*>(pm4_a_buf_)[i]);
@@ -1356,7 +1355,31 @@ void AqlQueue::BuildIb() {
 }
 
 void AqlQueue::ExecutePM4NOP() {
-  return BuildIb();
+#define TEST_ITERATION (1)
+  printf("16/1152/5120\n");
+  BuildIb(false, 16, 1152, 5120, 9 * 256, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
+  for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
+    BuildIb(true, 16, 1152, 5120, 9 * 256, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
+  }
+
+  printf("16/5120/384\n");
+  BuildIb(false, 16, 5120, 384, 40 * 256, GEMM_ISA_16_5120_384, sizeof(GEMM_ISA_16_5120_384));
+  for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
+    BuildIb(true, 16, 5120, 384, 40 * 256, GEMM_ISA_16_5120_384, sizeof(GEMM_ISA_16_5120_384));
+  }
+
+  printf("16/1280/5120\n");
+  BuildIb(false, 16, 1280, 5120, 10 * 256, GEMM_ISA_16_1280_5120, sizeof(GEMM_ISA_16_1280_5120));
+  for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
+    BuildIb(true, 16, 1280, 5120, 10 * 256, GEMM_ISA_16_1280_5120, sizeof(GEMM_ISA_16_1280_5120));
+  }
+
+  printf("16/5120/1280\n");
+  BuildIb(false, 16, 5120, 1280, 40 * 256, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
+  for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
+    BuildIb(true, 16, 5120, 1280, 40 * 256, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
+  }
+  return;
 
   // Construct several NOP PM4 commands.
   constexpr uint32_t pm4_nop_size_dw = 1;
@@ -1382,14 +1405,7 @@ void AqlQueue::ExecutePM4NOP() {
       (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(pm4_nop_size_dw)) |
        PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
 
-  printf("Execute IB->4 NOP inside an IB inside an AQL queue\n");
-
-  HsaClockCounters t0, t1;
-  hsaKmtGetClockCounters(agent_->node_id(), &t0);
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
-  hsaKmtGetClockCounters(agent_->node_id(), &t1);
-  printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
-  printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
 
   agent_->system_deallocator()(pm4_ib_buf_);
 }
