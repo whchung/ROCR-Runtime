@@ -206,7 +206,7 @@ typedef struct {
 } hsa_ext_amd_aql_pm4_packet_t;
 
 hsa_status_t hsa_ven_amd_experiment_get_pm4(
-  const hsa_ext_amd_aql_pm4_packet_t* aql_packet);    // [out] AQL packet
+  hsa_ext_amd_aql_pm4_packet_t* aql_packet);    // [out] AQL packet
 
 // Method to populate the provided AQL packet with profiling start commands
 // Only 'pm4_command' fields of the packet are set and the application
