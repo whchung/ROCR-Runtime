@@ -1329,7 +1329,9 @@ void AqlQueue::BuildIb(bool dispatch, uint32_t M, uint32_t N, uint32_t K, uint32
   ExecutePM4(ib_cmd, ib_size_dw * sizeof(uint32_t));
   hsaKmtGetClockCounters(agent_->node_id(), &t1);
   if (dispatch) {
-    printf("Latency GPU (ns): %ld\n", (t1.GPUClockCounter - t0.GPUClockCounter));
+    printf("Gemm(m, n, k): %d, %d, %d\n", M, N, K);
+    printf("Grid(x, y, z): %d, %d, %d\n", GRID_SIZE_X / 256, 1, 1);
+    printf("GEMM time: %5ld ns\n\n", (t1.GPUClockCounter - t0.GPUClockCounter));
     //printf("Latency CPU (ns): %ld\n", (t1.CPUClockCounter - t0.CPUClockCounter));
   }
 
@@ -1354,32 +1356,37 @@ void AqlQueue::BuildIb(bool dispatch, uint32_t M, uint32_t N, uint32_t K, uint32
   agent_->system_deallocator()(pm4_c_buf_);
 }
 
+static bool tested = false;
+
 void AqlQueue::ExecutePM4NOP() {
 #if 1
+if  (!tested) {
 #define TEST_ITERATION (1)
-  printf("16/1152/5120\n");
+  printf("M = 16, N = 1152, K = 5120\n\nRunning with GEMM FP16...\n");
   BuildIb(false, 16, 1152, 5120, 9 * 256, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
   for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
     BuildIb(true, 16, 1152, 5120, 9 * 256, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
   }
 
-  printf("16/5120/384\n");
+  printf("M = 16, N = 5120, K = 384\n\nRunning with GEMM FP16...\n");
   BuildIb(false, 16, 5120, 384, 40 * 256, GEMM_ISA_16_5120_384, sizeof(GEMM_ISA_16_5120_384));
   for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
     BuildIb(true, 16, 5120, 384, 40 * 256, GEMM_ISA_16_5120_384, sizeof(GEMM_ISA_16_5120_384));
   }
 
-  printf("16/1280/5120\n");
+  printf("M = 16, N = 1280, K = 5120\n\nRunning with GEMM FP16...\n");
   BuildIb(false, 16, 1280, 5120, 10 * 256, GEMM_ISA_16_1280_5120, sizeof(GEMM_ISA_16_1280_5120));
   for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
     BuildIb(true, 16, 1280, 5120, 10 * 256, GEMM_ISA_16_1280_5120, sizeof(GEMM_ISA_16_1280_5120));
   }
 
-  printf("16/5120/1280\n");
+  printf("M = 16, N = 5120, K = 1280\n\nRunning with GEMM FP16...\n");
   BuildIb(false, 16, 5120, 1280, 40 * 256, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
   for (uint32_t i = 0; i < TEST_ITERATION; ++i) {
     BuildIb(true, 16, 5120, 1280, 40 * 256, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
   }
+  tested = true;
+}
   return;
 #endif
 
