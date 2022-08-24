@@ -1027,7 +1027,7 @@ uint64_t hsa_queue_add_write_index_screlease(const hsa_queue_t* queue, uint64_t 
   core::Queue* cmd_queue = core::Queue::Convert(queue);
   assert(IsValid(cmd_queue));
 
-  cmd_queue->ExecutePM4NOP();
+  //cmd_queue->ExecutePM4NOP();
 
   return cmd_queue->AddWriteIndexRelease(value);
   CATCHRET(uint64_t);

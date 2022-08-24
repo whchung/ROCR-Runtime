@@ -205,7 +205,7 @@ typedef struct {
   hsa_signal_t completion_signal;
 } hsa_ext_amd_aql_pm4_packet_t;
 
-hsa_status_t hsa_ven_amd_experiment_get_pm4(
+hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
   hsa_ext_amd_aql_pm4_packet_t* aql_packet);    // [out] AQL packet
 
 // Method to populate the provided AQL packet with profiling start commands

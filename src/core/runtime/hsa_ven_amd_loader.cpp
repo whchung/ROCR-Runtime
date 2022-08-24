@@ -47,6 +47,12 @@
 
 #include "inc/hsa_ven_amd_aqlprofile.h"
 
+hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
+  hsa_ext_amd_aql_pm4_packet_t* aql_packet) {
+  printf("hsa_ven_amd_experiment_get_pm4\n");
+  return HSA_STATUS_SUCCESS;
+}
+
 namespace rocr {
 
 using namespace amd::hsa;
@@ -62,11 +68,6 @@ namespace AMD {
 hsa_status_t handleException();
 
 }   // namespace amd
-
-hsa_status_t hsa_ven_amd_experiment_get_pm4(
-  hsa_ext_amd_aql_pm4_packet_t* aql_packet) {
-  return HSA_STATUS_SUCCESS;
-}
 
 hsa_status_t hsa_ven_amd_loader_query_host_address(
   const void *device_address,
