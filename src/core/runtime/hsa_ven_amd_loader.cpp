@@ -46,10 +46,69 @@
 #include "core/inc/runtime.h"
 
 #include "inc/hsa_ven_amd_aqlprofile.h"
+#include "core/inc/amd_gpu_pm4.h"
+#include "core/inc/amd_gpu_agent.h"
+
+#define PAGE_SIZE (0x1000)
+#define PAGE_ALIGN (0x1000)
+static bool pm4_buf_created = false;
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
   hsa_ext_amd_aql_pm4_packet_t* aql_packet) {
   printf("hsa_ven_amd_experiment_get_pm4\n");
+
+  using namespace rocr;
+  using namespace rocr::core;
+  if (!Runtime::runtime_singleton_->IsOpen()) {
+    return HSA_STATUS_ERROR_NOT_INITIALIZED;
+  }
+
+  AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
+
+  // Construct one NOP PM4 command.
+  constexpr uint32_t pm4_nop_size_dw = 1;
+  uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, /*gfxip_ver=*/9) };
+
+  void* pm4_ib_buf_ = nullptr;
+  if (!pm4_buf_created) {
+    pm4_ib_buf_ = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
+  }
+  memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  uint32_t cmd_size_b = pm4_nop_size_dw * sizeof(uint32_t);
+ 
+  // Construct a PM4 command to execute the IB.
+  constexpr uint32_t ib_jump_size_dw = 4;
+
+  uint32_t ib_jump_cmd[ib_jump_size_dw] = {
+      PM4_HDR(PM4_HDR_IT_OPCODE_INDIRECT_BUFFER, ib_jump_size_dw, /*gfxip_ver=*/9),
+      PM4_INDIRECT_BUFFER_DW1_IB_BASE_LO(uint32_t(uintptr_t(pm4_ib_buf_) >> 2)),
+      PM4_INDIRECT_BUFFER_DW2_IB_BASE_HI(uint32_t(uintptr_t(pm4_ib_buf_) >> 32)),
+      (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(cmd_size_b / sizeof(uint32_t))) |
+       PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
+
+  // Construct an AQL packet to jump to the PM4 IB.
+  struct amd_aql_pm4_ib {
+    uint16_t header;
+    uint16_t ven_hdr;
+    uint32_t ib_jump_cmd[4];
+    uint32_t dw_cnt_remain;
+    uint32_t reserved[8];
+    hsa_signal_t completion_signal;
+  };
+
+  constexpr uint32_t AMD_AQL_FORMAT_PM4_IB = 0x1;
+
+  amd_aql_pm4_ib aql_pm4_ib{};
+  aql_pm4_ib.header = HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE;
+  aql_pm4_ib.ven_hdr = AMD_AQL_FORMAT_PM4_IB;
+  aql_pm4_ib.ib_jump_cmd[0] = ib_jump_cmd[0];
+  aql_pm4_ib.ib_jump_cmd[1] = ib_jump_cmd[1];
+  aql_pm4_ib.ib_jump_cmd[2] = ib_jump_cmd[2];
+  aql_pm4_ib.ib_jump_cmd[3] = ib_jump_cmd[3];
+  aql_pm4_ib.dw_cnt_remain = 0xA;
+
+  memcpy(aql_packet, &aql_pm4_ib, sizeof(amd_aql_pm4_ib));
+
   return HSA_STATUS_SUCCESS;
 }
 
