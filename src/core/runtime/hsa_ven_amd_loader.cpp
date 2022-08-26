@@ -65,7 +65,7 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
 
   AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
 
-  // Construct one NOP PM4 command.
+  // Construct four NOP PM4 command.
   constexpr uint32_t pm4_nop_size_dw = 1;
   uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, /*gfxip_ver=*/9) };
 
@@ -74,7 +74,10 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
     pm4_ib_buf_ = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
   }
   memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
-  uint32_t cmd_size_b = pm4_nop_size_dw * sizeof(uint32_t);
+  memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t), pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t) * 2, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t) * 3, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  uint32_t cmd_size_b = pm4_nop_size_dw * sizeof(uint32_t) * 4;
  
   // Construct a PM4 command to execute the IB.
   constexpr uint32_t ib_jump_size_dw = 4;
