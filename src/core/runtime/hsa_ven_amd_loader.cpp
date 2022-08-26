@@ -46,8 +46,13 @@
 #include "core/inc/runtime.h"
 
 #include "inc/hsa_ven_amd_aqlprofile.h"
+
 #include "core/inc/amd_gpu_pm4.h"
 #include "core/inc/amd_gpu_agent.h"
+#include "core/inc/asic_reg/gfx_7_2_d.h"
+#include "core/inc/asic_reg/gfx_7_2_sh_mask.h"
+#include "core/runtime/pm4/PM4Packet.hpp"
+#include "core/runtime/isa/isablobs.hpp"
 
 #define PAGE_SIZE (0x1000)
 #define PAGE_ALIGN (0x1000)
@@ -65,14 +70,185 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
 
   AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
 
+  //uint32_t SIZEOFA = PAGE_SIZE; //M * K * 2;
+  //uint32_t SIZEOFB = PAGE_SIZE; //K * N * 2;
+  //uint32_t SIZEOFC = PAGE_SIZE; //M * N * 2;
+
+  //void* pm4_a_buf_ = nullptr;
+  //void* pm4_b_buf_ = nullptr;
+  //void* pm4_c_buf_ = nullptr;
+  //void* pm4_isa_buf_ = nullptr;
+  void* pm4_ib_buf_ = nullptr;
+  if (!pm4_buf_created) {
+    //pm4_a_buf_ = gpu_agent->system_allocator()(SIZEOFA, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+    //pm4_b_buf_ = gpu_agent->system_allocator()(SIZEOFB, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+    //pm4_c_buf_ = gpu_agent->system_allocator()(SIZEOFC, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+    //pm4_isa_buf_ = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
+
+    pm4_ib_buf_ = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
+  }
+  //memset(pm4_a_buf_, 0, SIZEOFA);
+  //memset(pm4_b_buf_, 0, SIZEOFB);
+  //memset(pm4_c_buf_, 0, SIZEOFC);
+
+  //for (uint32_t i = 0; i < SIZEOFA / sizeof(uint32_t); ++i) {
+  //  reinterpret_cast<uint32_t*>(pm4_a_buf_)[i] = 0x40004000; // 2.0 (half) / 2.0 (half)
+  //}
+  //for (uint32_t i = 0; i < SIZEOFB / sizeof(uint32_t); ++i) {
+  //  reinterpret_cast<uint32_t*>(pm4_b_buf_)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
+  //}
+
+  //memcpy(pm4_isa_buf_, CUSTOM_SGPR_ISA, sizoef(CUSTOM_SGPR_ISA));
+ 
+  //// Parameters need to be set:
+  //// - ISA address.
+  //// - Kernel arguments: A/B/C
+  //// - Block size: X/Y/Z
+  //uint64_t shiftedIsaAddr = reinterpret_cast<uint64_t>(pm4_isa_buf_) >> 8;
+  //uint32_t arg0 = reinterpret_cast<uint64_t>(pm4_c_buf_) & 0xFFFFFFFF;
+  //uint32_t arg1 = reinterpret_cast<uint64_t>(pm4_c_buf_) >> 32;
+  //uint32_t arg2 = reinterpret_cast<uint64_t>(pm4_a_buf_) & 0xFFFFFFFF;
+  //uint32_t arg3 = reinterpret_cast<uint64_t>(pm4_a_buf_) >> 32;
+  //uint32_t arg4 = reinterpret_cast<uint64_t>(pm4_b_buf_) & 0xFFFFFFFF;
+  //uint32_t arg5 = reinterpret_cast<uint64_t>(pm4_b_buf_) >> 32;
+  //uint32_t m_DimX = GRID_SIZE_X;
+  //constexpr uint32_t m_DimY = 1;
+  //constexpr uint32_t m_DimZ = 1;
+  //constexpr uint32_t m_BlockX = BLOCK_SIZE_X;
+  //constexpr uint32_t m_BlockY = 1;
+  //constexpr uint32_t m_BlockZ = 1;
+
+  //// Starts at COMPUTE_START_X
+  //unsigned int COMPUTE_DISPATCH_DIMS_VALUES[] = {
+  //    0,      // START_X
+  //    0,      // START_Y
+  //    0,      // START_Z
+  //    1,      // NUM_THREADS_X - this is actually the number of threads in a thread group
+  //    1,      // NUM_THREADS_Y
+  //    1,      // NUM_THREADS_Z
+  //    0,      // COMPUTE_PIPELINESTAT_ENABLE
+  //    0,      // COMPUTE_PERFCOUNT_ENABLE
+  //};
+  //COMPUTE_DISPATCH_DIMS_VALUES[3] = m_BlockX;
+  //COMPUTE_DISPATCH_DIMS_VALUES[4] = m_BlockY;
+  //COMPUTE_DISPATCH_DIMS_VALUES[5] = m_BlockZ;
+
+  //unsigned int pgmRsrc2 = 0;
+  //pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__SCRATCH_EN__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__SCRATCH_EN_MASK;
+  //pgmRsrc2 |= (6 << COMPUTE_PGM_RSRC2__USER_SGPR__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__USER_SGPR_MASK;
+  //pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__TRAP_PRESENT__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__TRAP_PRESENT_MASK;
+  //pgmRsrc2 |= (1 << COMPUTE_PGM_RSRC2__TGID_X_EN__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__TGID_X_EN_MASK;
+  //pgmRsrc2 |= (1 << COMPUTE_PGM_RSRC2__TGID_Y_EN__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__TGID_Y_EN_MASK;
+  //pgmRsrc2 |= (1 << COMPUTE_PGM_RSRC2__TGID_Z_EN__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__TGID_Z_EN_MASK;
+  //pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__TG_SIZE_EN__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__TG_SIZE_EN_MASK;
+  //pgmRsrc2 |= (2 << COMPUTE_PGM_RSRC2__TIDIG_COMP_CNT__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__TIDIG_COMP_CNT_MASK;
+  //pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__EXCP_EN__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__EXCP_EN_MASK;
+  //pgmRsrc2 |= (0x13 << COMPUTE_PGM_RSRC2__LDS_SIZE__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__LDS_SIZE_MASK;
+  //pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__EXCP_EN_MSB__SHIFT)
+  //        & COMPUTE_PGM_RSRC2__EXCP_EN_MSB_MASK;
+
+  //const unsigned int COMPUTE_PGM_RSRC[] = {
+  //    // PGM_RSRC1 = { VGPRS: 52 (44+8) SGPRS: 32 PRIORITY: 0 FLOAT_MODE: 240 PRIV: 0
+  //    // DX10_CLAMP: 0 DEBUG_MODE: 0 IEEE_MODE: 1 BULKY: 0 CDBG_USER: 0 }
+  //    0x004f808d,
+  //    pgmRsrc2
+  //};
+
+  //// Starts at COMPUTE_PGM_LO
+  //const unsigned int COMPUTE_PGM_VALUES_GFX9[] = {
+  //    static_cast<uint32_t>(shiftedIsaAddr),                  // PGM_LO
+  //    static_cast<uint32_t>(shiftedIsaAddr >> 32),            // PGM_HI
+  //    0,
+  //    0,
+  //    0,
+  //    0
+  //};
+
+  //// Starts at COMPUTE_USER_DATA_0
+  //const unsigned int COMPUTE_USER_DATA_VALUES[] = {
+  //                // Reg name
+  //    arg0,       // COMPUTE_USER_DATA_0
+  //    arg1,       // COMPUTE_USER_DATA_1
+  //    arg2,       // COMPUTE_USER_DATA_2
+  //    arg3,       // COMPUTE_USER_DATA_3
+  //    arg4,       // COMPUTE_USER_DATA_4
+  //    arg5,       // COMPUTE_USER_DATA_5
+  //    0,          // COMPUTE_USER_DATA_6
+  //    0,          // COMPUTE_USER_DATA_7
+  //    0,          // COMPUTE_USER_DATA_8
+  //    0,          // COMPUTE_USER_DATA_9
+  //    0,          // COMPUTE_USER_DATA_10
+  //    0,          // COMPUTE_USER_DATA_11
+  //    0,          // COMPUTE_USER_DATA_12
+  //    0,          // COMPUTE_USER_DATA_13
+  //    0,          // COMPUTE_USER_DATA_14
+  //    0xCAFEBABE, // COMPUTE_USER_DATA_15
+  //};
+
+  //const unsigned int DISPATCH_INIT_VALUE = 0x00000021;
+  //// {COMPUTE_SHADER_EN=1, PARTIAL_TG_EN=0, FORCE_START_AT_000=0, ORDERED_APPEND_ENBL=0,
+  //// ORDERED_APPEND_MODE=0, USE_THREAD_DIMENSIONS=1, ORDER_MODE=0, DISPATCH_CACHE_CNTL=0,
+  //// SCALAR_L1_INV_VOL=0, VECTOR_L1_INV_VOL=0, DATA_ATC=?, RESTORE=0}
+
+  //uint32_t packetBytes = 0;
+
+  //PM4AcquireMemoryPacket p0(FAMILY_AL);
+  //memcpy(pm4_ib_buf_, p0.GetPacket(), p0.SizeInBytes());
+  //packetBytes += p0.SizeInBytes();
+
+  //PM4SetShaderRegPacket p1(mmCOMPUTE_START_X, COMPUTE_DISPATCH_DIMS_VALUES, ARRAY_SIZE(COMPUTE_DISPATCH_DIMS_VALUES));
+  //memcpy(pm4_ib_buf_ + packetBytes, p1.GetPacket(), p1.SizeInBytes());
+  //packetBytes += p1.SizeInBytes();
+
+  //PM4SetShaderRegPacket p2(mmCOMPUTE_PGM_LO, COMPUTE_PGM_VALUES_GFX9, ARRAY_SIZE(COMPUTE_PGM_VALUES_GFX9));
+  //memcpy(pm4_ib_buf_ + packetBytes, p2.GetPacket(), p2.SizeInBytes());
+  //packetBytes += p2.SizeInBytes();
+
+  //PM4SetShaderRegPacket p3(mmCOMPUTE_PGM_RSRC1, COMPUTE_PGM_RSRC, ARRAY_SIZE(COMPUTE_PGM_RSRC));
+  //memcpy(pm4_ib_buf_ + packetBytes, p3.GetPacket(), p3.SizeInBytes());
+  //packetBytes += p3.SizeInBytes();
+
+  //#define COMPUTE_PGM_RSRC3__ACCUM_OFFSET__SHIFT 0x0
+  //#define COMPUTE_PGM_RSRC3__TG_SPLIT__SHIFT     0x10
+  //#define COMPUTE_PGM_RSRC3__ACCUM_OFFSET_MASK   0x0000003FL
+  //#define COMPUTE_PGM_RSRC3__TG_SPLIT__MASK      0x00010000L
+  ////; COMPUTE_PGM_RSRC3_GFX90A:ACCUM_OFFSET: 10
+  ////; COMPUTE_PGM_RSRC3_GFX90A:TG_SPLIT: 0
+  //const unsigned int COMPUTE_PGM_RSRC3[] = {10};
+  //PM4SetShaderRegPacket p4(mmCOMPUTE_PGM_RSRC3, COMPUTE_PGM_RSRC3, ARRAY_SIZE(COMPUTE_PGM_RSRC3));
+  //memcpy(pm4_ib_buf_ + packetBytes, p4.GetPacket(), p4.SizeInBytes());
+  //packetBytes += p4.SizeInBytes();
+
+  //PM4SetShaderRegPacket p5(mmCOMPUTE_USER_DATA_0, COMPUTE_USER_DATA_VALUES, ARRAY_SIZE(COMPUTE_USER_DATA_VALUES));
+  //memcpy(pm4_ib_buf_ + packetBytes, p5.GetPacket(), p5.SizeInBytes());
+  //packetBytes += p5.SizeInBytes();
+
+  //if (dispatch) {
+  //  PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
+  //  memcpy(pm4_ib_buf_ + packetBytes, p6.GetPacket(), p6.SizeInBytes());
+  //  packetBytes += p6.SizeInBytes();
+  //}
+
+  //PM4PartialFlushPacket p7;
+  //memcpy(pm4_ib_buf_ + packetBytes, p7.GetPacket(), p7.SizeInBytes());
+  //packetBytes += p7.SizeInBytes();
+
+
+
   // Construct four NOP PM4 command.
   constexpr uint32_t pm4_nop_size_dw = 1;
   uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, /*gfxip_ver=*/9) };
 
-  void* pm4_ib_buf_ = nullptr;
-  if (!pm4_buf_created) {
-    pm4_ib_buf_ = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
-  }
   memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
   memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t), pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
   memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t) * 2, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
