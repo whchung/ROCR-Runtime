@@ -205,8 +205,27 @@ typedef struct {
   hsa_signal_t completion_signal;
 } hsa_ext_amd_aql_pm4_packet_t;
 
+hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
+  void** pm4_a_buf,   // [out] PM4 matrix A buffer
+  void** pm4_b_buf,   // [out] PM4 matrix B buffer
+  void** pm4_c_buf,   // [out] PM4 matrix C buffer
+  void** pm4_isa_buf, // [out] PM4 ISA buffer
+  void** pm4_ib_buf); // [out] PM4 IB buffer
+
 hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
-  hsa_ext_amd_aql_pm4_packet_t* aql_packet);    // [out] AQL packet
+  hsa_ext_amd_aql_pm4_packet_t* aql_packet,    // [out] AQL packet
+  void* pm4_a_buf,                             // [in]  PM4 matrix A buffer
+  void* pm4_b_buf,                             // [in]  PM4 matrix B buffer
+  void* pm4_c_buf,                             // [in]  PM4 matrix C buffer
+  void* pm4_isa_buf,                           // [in]  PM4 ISA buffer
+  void* pm4_ib_buf);                           // [in]  PM4 IB buffer
+
+hsa_status_t HSA_API hsa_ven_amd_experiment_free_pm4_buffers(
+  void* pm4_a_buf,   // [in] PM4 matrix A buffer
+  void* pm4_b_buf,   // [in] PM4 matrix B buffer
+  void* pm4_c_buf,   // [in] PM4 matrix C buffer
+  void* pm4_isa_buf, // [in] PM4 ISA buffer
+  void* pm4_ib_buf); // [in] PM4 IB buffer
 
 // Method to populate the provided AQL packet with profiling start commands
 // Only 'pm4_command' fields of the packet are set and the application

@@ -56,10 +56,71 @@
 
 #define PAGE_SIZE (0x1000)
 #define PAGE_ALIGN (0x1000)
-static bool pm4_buf_created = false;
+
+#define SIZEOFA PAGE_SIZE //M * K * 2;
+#define SIZEOFB PAGE_SIZE //K * N * 2;
+#define SIZEOFC PAGE_SIZE //M * N * 2;
+
+#define GRID_SIZE_X (1)
+#define BLOCK_SIZE_X (1)
+
+hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
+  void** pm4_a_buf,
+  void** pm4_b_buf,
+  void** pm4_c_buf,
+  void** pm4_isa_buf,
+  void** pm4_ib_buf) {
+  printf("hsa_ven_amd_experiment_allocate_pm4_buffers\n");
+
+  using namespace rocr;
+  using namespace rocr::core;
+  if (!Runtime::runtime_singleton_->IsOpen()) {
+    return HSA_STATUS_ERROR_NOT_INITIALIZED;
+  }
+
+  AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
+
+  *pm4_a_buf = gpu_agent->system_allocator()(SIZEOFA, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  *pm4_b_buf = gpu_agent->system_allocator()(SIZEOFB, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  *pm4_c_buf = gpu_agent->system_allocator()(SIZEOFC, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  *pm4_isa_buf = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
+  *pm4_ib_buf = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
+
+  return HSA_STATUS_SUCCESS;
+}
+
+hsa_status_t HSA_API hsa_ven_amd_experiment_free_pm4_buffers(
+  void* pm4_a_buf,
+  void* pm4_b_buf,
+  void* pm4_c_buf,
+  void* pm4_isa_buf,
+  void* pm4_ib_buf) {
+  printf("hsa_ven_amd_experiment_free_pm4_buffers\n");
+
+  using namespace rocr;
+  using namespace rocr::core;
+  if (!Runtime::runtime_singleton_->IsOpen()) {
+    return HSA_STATUS_ERROR_NOT_INITIALIZED;
+  }
+
+  AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
+
+  gpu_agent->system_deallocator()(pm4_a_buf);
+  gpu_agent->system_deallocator()(pm4_b_buf);
+  gpu_agent->system_deallocator()(pm4_c_buf);
+  gpu_agent->system_deallocator()(pm4_isa_buf);
+  gpu_agent->system_deallocator()(pm4_ib_buf);
+
+  return HSA_STATUS_SUCCESS;
+}
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
-  hsa_ext_amd_aql_pm4_packet_t* aql_packet) {
+  hsa_ext_amd_aql_pm4_packet_t* aql_packet,
+  void* pm4_a_buf,
+  void* pm4_b_buf,
+  void* pm4_c_buf,
+  void* pm4_isa_buf,
+  void* pm4_ib_buf) {
   printf("hsa_ven_amd_experiment_get_pm4\n");
 
   using namespace rocr;
@@ -70,50 +131,30 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
 
   AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
 
-  uint32_t SIZEOFA = PAGE_SIZE; //M * K * 2;
-  uint32_t SIZEOFB = PAGE_SIZE; //K * N * 2;
-  uint32_t SIZEOFC = PAGE_SIZE; //M * N * 2;
+  memset(pm4_a_buf, 0, SIZEOFA);
+  memset(pm4_b_buf, 0, SIZEOFB);
+  memset(pm4_c_buf, 0, SIZEOFC);
 
-  void* pm4_a_buf_ = nullptr;
-  void* pm4_b_buf_ = nullptr;
-  void* pm4_c_buf_ = nullptr;
-  void* pm4_isa_buf_ = nullptr;
-  void* pm4_ib_buf_ = nullptr;
-  if (!pm4_buf_created) {
-    pm4_a_buf_ = gpu_agent->system_allocator()(SIZEOFA, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-    pm4_b_buf_ = gpu_agent->system_allocator()(SIZEOFB, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-    pm4_c_buf_ = gpu_agent->system_allocator()(SIZEOFC, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-    pm4_isa_buf_ = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
+  // for (uint32_t i = 0; i < SIZEOFA / sizeof(uint32_t); ++i) {
+  //   reinterpret_cast<uint32_t*>(pm4_a_buf)[i] = 0x40004000; // 2.0 (half) / 2.0 (half)
+  // }
+  // for (uint32_t i = 0; i < SIZEOFB / sizeof(uint32_t); ++i) {
+  //   reinterpret_cast<uint32_t*>(pm4_b_buf)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
+  // }
 
-    pm4_ib_buf_ = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
-  }
-  memset(pm4_a_buf_, 0, SIZEOFA);
-  memset(pm4_b_buf_, 0, SIZEOFB);
-  memset(pm4_c_buf_, 0, SIZEOFC);
-
-  for (uint32_t i = 0; i < SIZEOFA / sizeof(uint32_t); ++i) {
-    reinterpret_cast<uint32_t*>(pm4_a_buf_)[i] = 0x40004000; // 2.0 (half) / 2.0 (half)
-  }
-  for (uint32_t i = 0; i < SIZEOFB / sizeof(uint32_t); ++i) {
-    reinterpret_cast<uint32_t*>(pm4_b_buf_)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
-  }
-
-  memcpy(pm4_isa_buf_, CUSTOM_SGPR_ISA, sizeof(CUSTOM_SGPR_ISA));
+  memcpy(pm4_isa_buf, CUSTOM_SGPR_ISA, sizeof(CUSTOM_SGPR_ISA));
  
-#define GRID_SIZE_X (1)
-#define BLOCK_SIZE_X (1)
-
   // Parameters need to be set:
   // - ISA address.
   // - Kernel arguments: A/B/C
   // - Block size: X/Y/Z
-  uint64_t shiftedIsaAddr = reinterpret_cast<uint64_t>(pm4_isa_buf_) >> 8;
-  uint32_t arg0 = reinterpret_cast<uint64_t>(pm4_c_buf_) & 0xFFFFFFFF;
-  uint32_t arg1 = reinterpret_cast<uint64_t>(pm4_c_buf_) >> 32;
-  uint32_t arg2 = reinterpret_cast<uint64_t>(pm4_a_buf_) & 0xFFFFFFFF;
-  uint32_t arg3 = reinterpret_cast<uint64_t>(pm4_a_buf_) >> 32;
-  uint32_t arg4 = reinterpret_cast<uint64_t>(pm4_b_buf_) & 0xFFFFFFFF;
-  uint32_t arg5 = reinterpret_cast<uint64_t>(pm4_b_buf_) >> 32;
+  uint64_t shiftedIsaAddr = reinterpret_cast<uint64_t>(pm4_isa_buf) >> 8;
+  uint32_t arg0 = reinterpret_cast<uint64_t>(pm4_c_buf) & 0xFFFFFFFF;
+  uint32_t arg1 = reinterpret_cast<uint64_t>(pm4_c_buf) >> 32;
+  uint32_t arg2 = reinterpret_cast<uint64_t>(pm4_a_buf) & 0xFFFFFFFF;
+  uint32_t arg3 = reinterpret_cast<uint64_t>(pm4_a_buf) >> 32;
+  uint32_t arg4 = reinterpret_cast<uint64_t>(pm4_b_buf) & 0xFFFFFFFF;
+  uint32_t arg5 = reinterpret_cast<uint64_t>(pm4_b_buf) >> 32;
   uint32_t m_DimX = GRID_SIZE_X;
   constexpr uint32_t m_DimY = 1;
   constexpr uint32_t m_DimZ = 1;
@@ -206,19 +247,19 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
   uint32_t cmd_size_b = 0;
 
   PM4AcquireMemoryPacket p0(FAMILY_AL);
-  memcpy(pm4_ib_buf_, p0.GetPacket(), p0.SizeInBytes());
+  memcpy(pm4_ib_buf, p0.GetPacket(), p0.SizeInBytes());
   cmd_size_b += p0.SizeInBytes();
 
   PM4SetShaderRegPacket p1(mmCOMPUTE_START_X, COMPUTE_DISPATCH_DIMS_VALUES, ARRAY_SIZE(COMPUTE_DISPATCH_DIMS_VALUES));
-  memcpy(pm4_ib_buf_ + cmd_size_b, p1.GetPacket(), p1.SizeInBytes());
+  memcpy(pm4_ib_buf + cmd_size_b, p1.GetPacket(), p1.SizeInBytes());
   cmd_size_b += p1.SizeInBytes();
 
   PM4SetShaderRegPacket p2(mmCOMPUTE_PGM_LO, COMPUTE_PGM_VALUES_GFX9, ARRAY_SIZE(COMPUTE_PGM_VALUES_GFX9));
-  memcpy(pm4_ib_buf_ + cmd_size_b, p2.GetPacket(), p2.SizeInBytes());
+  memcpy(pm4_ib_buf + cmd_size_b, p2.GetPacket(), p2.SizeInBytes());
   cmd_size_b += p2.SizeInBytes();
 
   PM4SetShaderRegPacket p3(mmCOMPUTE_PGM_RSRC1, COMPUTE_PGM_RSRC, ARRAY_SIZE(COMPUTE_PGM_RSRC));
-  memcpy(pm4_ib_buf_ + cmd_size_b, p3.GetPacket(), p3.SizeInBytes());
+  memcpy(pm4_ib_buf + cmd_size_b, p3.GetPacket(), p3.SizeInBytes());
   cmd_size_b += p3.SizeInBytes();
 
   #define COMPUTE_PGM_RSRC3__ACCUM_OFFSET__SHIFT 0x0
@@ -229,30 +270,29 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
   //; COMPUTE_PGM_RSRC3_GFX90A:TG_SPLIT: 0
   const unsigned int COMPUTE_PGM_RSRC3[] = {10};
   PM4SetShaderRegPacket p4(mmCOMPUTE_PGM_RSRC3, COMPUTE_PGM_RSRC3, ARRAY_SIZE(COMPUTE_PGM_RSRC3));
-  memcpy(pm4_ib_buf_ + cmd_size_b, p4.GetPacket(), p4.SizeInBytes());
+  memcpy(pm4_ib_buf + cmd_size_b, p4.GetPacket(), p4.SizeInBytes());
   cmd_size_b += p4.SizeInBytes();
 
   PM4SetShaderRegPacket p5(mmCOMPUTE_USER_DATA_0, COMPUTE_USER_DATA_VALUES, ARRAY_SIZE(COMPUTE_USER_DATA_VALUES));
-  memcpy(pm4_ib_buf_ + cmd_size_b, p5.GetPacket(), p5.SizeInBytes());
+  memcpy(pm4_ib_buf + cmd_size_b, p5.GetPacket(), p5.SizeInBytes());
   cmd_size_b += p5.SizeInBytes();
 
   PM4DispatchDirectPacket p6(m_DimX, m_DimY, m_DimZ, DISPATCH_INIT_VALUE);
-  memcpy(pm4_ib_buf_ + cmd_size_b, p6.GetPacket(), p6.SizeInBytes());
+  memcpy(pm4_ib_buf + cmd_size_b, p6.GetPacket(), p6.SizeInBytes());
   cmd_size_b += p6.SizeInBytes();
 
   PM4PartialFlushPacket p7;
-  memcpy(pm4_ib_buf_ + cmd_size_b, p7.GetPacket(), p7.SizeInBytes());
+  memcpy(pm4_ib_buf + cmd_size_b, p7.GetPacket(), p7.SizeInBytes());
   cmd_size_b += p7.SizeInBytes();
-
 
   // // Construct four NOP PM4 command.
   // constexpr uint32_t pm4_nop_size_dw = 1;
   // uint32_t pm4_nop_cmd[pm4_nop_size_dw] = { PM4_HDR(PM4_HDR_IT_OPCODE_NOP, pm4_nop_size_dw, /*gfxip_ver=*/9) };
 
-  // memcpy(pm4_ib_buf_, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
-  // memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t), pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
-  // memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t) * 2, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
-  // memcpy(pm4_ib_buf_ + pm4_nop_size_dw * sizeof(uint32_t) * 3, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  // memcpy(pm4_ib_buf, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  // memcpy(pm4_ib_buf + pm4_nop_size_dw * sizeof(uint32_t), pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  // memcpy(pm4_ib_buf + pm4_nop_size_dw * sizeof(uint32_t) * 2, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
+  // memcpy(pm4_ib_buf + pm4_nop_size_dw * sizeof(uint32_t) * 3, pm4_nop_cmd, pm4_nop_size_dw * sizeof(uint32_t));
   // uint32_t cmd_size_b = pm4_nop_size_dw * sizeof(uint32_t) * 4;
  
   // Construct a PM4 command to execute the IB.
@@ -260,8 +300,8 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
 
   uint32_t ib_jump_cmd[ib_jump_size_dw] = {
       PM4_HDR(PM4_HDR_IT_OPCODE_INDIRECT_BUFFER, ib_jump_size_dw, /*gfxip_ver=*/9),
-      PM4_INDIRECT_BUFFER_DW1_IB_BASE_LO(uint32_t(uintptr_t(pm4_ib_buf_) >> 2)),
-      PM4_INDIRECT_BUFFER_DW2_IB_BASE_HI(uint32_t(uintptr_t(pm4_ib_buf_) >> 32)),
+      PM4_INDIRECT_BUFFER_DW1_IB_BASE_LO(uint32_t(uintptr_t(pm4_ib_buf) >> 2)),
+      PM4_INDIRECT_BUFFER_DW2_IB_BASE_HI(uint32_t(uintptr_t(pm4_ib_buf) >> 32)),
       (PM4_INDIRECT_BUFFER_DW3_IB_SIZE(uint32_t(cmd_size_b / sizeof(uint32_t))) |
        PM4_INDIRECT_BUFFER_DW3_IB_VALID(1))};
 

@@ -227,6 +227,8 @@ global:
 	hsa_amd_svm_attributes_get;
 	hsa_amd_svm_prefetch_async;
         hsa_ven_amd_experiment_get_pm4;
+        hsa_ven_amd_experiment_allocate_pm4_buffers;
+        hsa_ven_amd_experiment_free_pm4_buffers;
 
 local:
     *;
