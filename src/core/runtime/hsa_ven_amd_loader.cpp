@@ -61,8 +61,8 @@
 #define SIZEOFB PAGE_SIZE //K * N * 2;
 #define SIZEOFC PAGE_SIZE //M * N * 2;
 
-#define GRID_SIZE_X (64)
-#define BLOCK_SIZE_X (64)
+#define GRID_SIZE_X (256)
+#define BLOCK_SIZE_X (8)
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
   void** pm4_a_buf,
@@ -142,7 +142,7 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
     reinterpret_cast<uint32_t*>(pm4_b_buf)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
   }
 
-  memcpy(pm4_isa_buf, VECTOR_ADD_ISA, sizeof(VECTOR_ADD_ISA));
+  memcpy(pm4_isa_buf, VECTOR_GROUP_SET_ISA, sizeof(VECTOR_GROUP_SET_ISA));
  
   // Parameters need to be set:
   // - ISA address.
@@ -180,7 +180,7 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
   unsigned int pgmRsrc2 = 0;
   pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__SCRATCH_EN__SHIFT)
           & COMPUTE_PGM_RSRC2__SCRATCH_EN_MASK;
-  pgmRsrc2 |= (16 << COMPUTE_PGM_RSRC2__USER_SGPR__SHIFT)
+  pgmRsrc2 |= (6 << COMPUTE_PGM_RSRC2__USER_SGPR__SHIFT)
           & COMPUTE_PGM_RSRC2__USER_SGPR_MASK;
   pgmRsrc2 |= (0 << COMPUTE_PGM_RSRC2__TRAP_PRESENT__SHIFT)
           & COMPUTE_PGM_RSRC2__TRAP_PRESENT_MASK;
