@@ -61,8 +61,8 @@
 #define SIZEOFB PAGE_SIZE //K * N * 2;
 #define SIZEOFC PAGE_SIZE //M * N * 2;
 
-#define GRID_SIZE_X (1)
-#define BLOCK_SIZE_X (1)
+#define GRID_SIZE_X (64)
+#define BLOCK_SIZE_X (64)
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
   void** pm4_a_buf,
@@ -142,7 +142,7 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
     reinterpret_cast<uint32_t*>(pm4_b_buf)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
   }
 
-  memcpy(pm4_isa_buf, SCALAR_ADD_ISA, sizeof(SCALAR_ADD_ISA));
+  memcpy(pm4_isa_buf, VECTOR_SET_ISA, sizeof(VECTOR_SET_ISA));
  
   // Parameters need to be set:
   // - ISA address.
