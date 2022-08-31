@@ -142,7 +142,7 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
     reinterpret_cast<uint32_t*>(pm4_b_buf)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
   }
 
-  memcpy(pm4_isa_buf, SCALAR_SET_ISA, sizeof(SCALAR_SET_ISA));
+  memcpy(pm4_isa_buf, SCALAR_ADD_ISA, sizeof(SCALAR_ADD_ISA));
  
   // Parameters need to be set:
   // - ISA address.
