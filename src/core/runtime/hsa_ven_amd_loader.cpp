@@ -135,14 +135,14 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
   memset(pm4_b_buf, 0, SIZEOFB);
   memset(pm4_c_buf, 0, SIZEOFC);
 
-  // for (uint32_t i = 0; i < SIZEOFA / sizeof(uint32_t); ++i) {
-  //   reinterpret_cast<uint32_t*>(pm4_a_buf)[i] = 0x40004000; // 2.0 (half) / 2.0 (half)
-  // }
-  // for (uint32_t i = 0; i < SIZEOFB / sizeof(uint32_t); ++i) {
-  //   reinterpret_cast<uint32_t*>(pm4_b_buf)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
-  // }
+  for (uint32_t i = 0; i < SIZEOFA / sizeof(uint32_t); ++i) {
+    reinterpret_cast<uint32_t*>(pm4_a_buf)[i] = 0x40004000; // 2.0 (half) / 2.0 (half)
+  }
+  for (uint32_t i = 0; i < SIZEOFB / sizeof(uint32_t); ++i) {
+    reinterpret_cast<uint32_t*>(pm4_b_buf)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
+  }
 
-  memcpy(pm4_isa_buf, CUSTOM_SGPR_ISA, sizeof(CUSTOM_SGPR_ISA));
+  memcpy(pm4_isa_buf, SCALAR_SET_ISA, sizeof(SCALAR_SET_ISA));
  
   // Parameters need to be set:
   // - ISA address.
