@@ -57,17 +57,8 @@
 #define PAGE_SIZE (0x1000)
 #define PAGE_ALIGN (0x1000)
 
-#define M (16)
-#define N (5120)
-#define K (1280)
-#define SIZEOFA (M * K * 2)
-#define SIZEOFB (K * N * 2)
-#define SIZEOFC (M * N * 2)
-
-#define GRID_SIZE_X (40 * 256)
-#define BLOCK_SIZE_X (256)
-
 hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
+  uint32_t m, uint32_t n, uint32_t k,
   void** pm4_a_buf,
   void** pm4_b_buf,
   void** pm4_c_buf,
@@ -83,12 +74,15 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
 
   AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
 
-  *pm4_a_buf = gpu_agent->system_allocator()(SIZEOFA, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-  *pm4_b_buf = gpu_agent->system_allocator()(SIZEOFB, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
-  *pm4_c_buf = gpu_agent->system_allocator()(SIZEOFC, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  uint32_t sizeofa = m * k * 2;
+  uint32_t sizeofb = k * n * 2;
+  uint32_t sizeofc = m * n * 2;
+
+  *pm4_a_buf = gpu_agent->system_allocator()(sizeofa, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  *pm4_b_buf = gpu_agent->system_allocator()(sizeofb, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
+  *pm4_c_buf = gpu_agent->system_allocator()(sizeofc, PAGE_ALIGN, core::MemoryRegion::AllocateNoFlags);
   *pm4_isa_buf = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
   *pm4_ib_buf = gpu_agent->system_allocator()(PAGE_SIZE, PAGE_ALIGN, core::MemoryRegion::AllocateExecutable);
-
   return HSA_STATUS_SUCCESS;
 }
 
@@ -118,6 +112,7 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_free_pm4_buffers(
 }
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
+  uint32_t m, uint32_t n, uint32_t k,
   hsa_ext_amd_aql_pm4_packet_t* aql_packet,
   void* pm4_a_buf,
   void* pm4_b_buf,
@@ -132,20 +127,42 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
     return HSA_STATUS_ERROR_NOT_INITIALIZED;
   }
 
-  AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
+  uint32_t sizeofa = m * k * 2;
+  uint32_t sizeofb = k * n * 2;
+  uint32_t sizeofc = m * n * 2;
 
-  memset(pm4_a_buf, 0, SIZEOFA);
-  memset(pm4_b_buf, 0, SIZEOFB);
-  memset(pm4_c_buf, 0, SIZEOFC);
+  memset(pm4_a_buf, 0, sizeofa);
+  memset(pm4_b_buf, 0, sizeofb);
+  memset(pm4_c_buf, 0, sizeofc);
 
-  for (uint32_t i = 0; i < SIZEOFA / sizeof(uint32_t); ++i) {
+  for (uint32_t i = 0; i < sizeofa / sizeof(uint32_t); ++i) {
     reinterpret_cast<uint32_t*>(pm4_a_buf)[i] = 0x40004000; // 2.0 (half) / 2.0 (half)
   }
-  for (uint32_t i = 0; i < SIZEOFB / sizeof(uint32_t); ++i) {
+  for (uint32_t i = 0; i < sizeofb / sizeof(uint32_t); ++i) {
     reinterpret_cast<uint32_t*>(pm4_b_buf)[i] = 0x3C003C00; // 1.0 (half) / 1.0 (half)
   }
 
-  memcpy(pm4_isa_buf, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
+  uint32_t grid_size_x = 1;
+  uint32_t block_size_x = 1;
+  if ((m == 16) && (n == 1152) && (k == 5120)) {
+    memcpy(pm4_isa_buf, GEMM_ISA_16_1152_5120, sizeof(GEMM_ISA_16_1152_5120));
+    grid_size_x = 9 * 256;
+    block_size_x = 256;
+  } else if ((m == 16) && (n == 5120) && (k == 384)) {
+    memcpy(pm4_isa_buf, GEMM_ISA_16_5120_384, sizeof(GEMM_ISA_16_5120_384));
+    grid_size_x = 40 * 256;
+    block_size_x = 256;
+  } else if ((m == 16) && (n == 1280) && (k == 5120)) {
+    memcpy(pm4_isa_buf, GEMM_ISA_16_1280_5120, sizeof(GEMM_ISA_16_1280_5120));
+    grid_size_x = 10 * 256;
+    block_size_x = 256;
+  } else if ((m == 16) && (n == 5120) && (k == 1280)) {
+    memcpy(pm4_isa_buf, GEMM_ISA_16_5120_1280, sizeof(GEMM_ISA_16_5120_1280));
+    grid_size_x = 40 * 256;
+    block_size_x = 256;
+  } else {
+    memcpy(pm4_isa_buf, CUSTOM_SGPR_ISA, sizeof(CUSTOM_SGPR_ISA));
+  }
  
   // Parameters need to be set:
   // - ISA address.
@@ -158,12 +175,12 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
   uint32_t arg3 = reinterpret_cast<uint64_t>(pm4_a_buf) >> 32;
   uint32_t arg4 = reinterpret_cast<uint64_t>(pm4_b_buf) & 0xFFFFFFFF;
   uint32_t arg5 = reinterpret_cast<uint64_t>(pm4_b_buf) >> 32;
-  uint32_t m_DimX = GRID_SIZE_X;
-  constexpr uint32_t m_DimY = 1;
-  constexpr uint32_t m_DimZ = 1;
-  constexpr uint32_t m_BlockX = BLOCK_SIZE_X;
-  constexpr uint32_t m_BlockY = 1;
-  constexpr uint32_t m_BlockZ = 1;
+  uint32_t m_DimX = grid_size_x;
+  uint32_t m_DimY = 1;
+  uint32_t m_DimZ = 1;
+  uint32_t m_BlockX = block_size_x;
+  uint32_t m_BlockY = 1;
+  uint32_t m_BlockZ = 1;
 
   // Starts at COMPUTE_START_X
   unsigned int COMPUTE_DISPATCH_DIMS_VALUES[] = {

@@ -206,19 +206,25 @@ typedef struct {
 } hsa_ext_amd_aql_pm4_packet_t;
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
-  void** pm4_a_buf,   // [out] PM4 matrix A buffer
-  void** pm4_b_buf,   // [out] PM4 matrix B buffer
-  void** pm4_c_buf,   // [out] PM4 matrix C buffer
-  void** pm4_isa_buf, // [out] PM4 ISA buffer
-  void** pm4_ib_buf); // [out] PM4 IB buffer
+  uint32_t m,             // [in] GEMM M
+  uint32_t n,             // [in] GEMM N
+  uint32_t k,             // [in] GEMM K
+  void** pm4_a_buf,       // [out] PM4 matrix A buffer
+  void** pm4_b_buf,       // [out] PM4 matrix B buffer
+  void** pm4_c_buf,       // [out] PM4 matrix C buffer
+  void** pm4_isa_buf,     // [out] PM4 ISA buffer
+  void** pm4_ib_buf);     // [out] PM4 IB buffer
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_get_pm4(
-  hsa_ext_amd_aql_pm4_packet_t* aql_packet,    // [out] AQL packet
-  void* pm4_a_buf,                             // [in]  PM4 matrix A buffer
-  void* pm4_b_buf,                             // [in]  PM4 matrix B buffer
-  void* pm4_c_buf,                             // [in]  PM4 matrix C buffer
-  void* pm4_isa_buf,                           // [in]  PM4 ISA buffer
-  void* pm4_ib_buf);                           // [in]  PM4 IB buffer
+  uint32_t m,                               // [in] GEMM M
+  uint32_t n,                               // [in] GEMM N
+  uint32_t k,                               // [in] GEMM K
+  hsa_ext_amd_aql_pm4_packet_t* aql_packet, // [out] AQL packet
+  void* pm4_a_buf,                          // [in]  PM4 matrix A buffer
+  void* pm4_b_buf,                          // [in]  PM4 matrix B buffer
+  void* pm4_c_buf,                          // [in]  PM4 matrix C buffer
+  void* pm4_isa_buf,                        // [in]  PM4 ISA buffer
+  void* pm4_ib_buf);                        // [in]  PM4 IB buffer
 
 hsa_status_t HSA_API hsa_ven_amd_experiment_free_pm4_buffers(
   void* pm4_a_buf,   // [in] PM4 matrix A buffer
