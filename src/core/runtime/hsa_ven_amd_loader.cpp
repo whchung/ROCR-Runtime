@@ -68,6 +68,17 @@ hsa_status_t HSA_API hsa_ven_amd_experiment_get_gpu_clock(uint64_t* tick) {
   return HSA_STATUS_SUCCESS;
 }
 
+hsa_status_t HSA_API hsa_ven_amd_experiment_get_gpu_cpu_clock(uint64_t* tick, uint64_t* cpu_tick) {
+  using namespace rocr;
+  using namespace rocr::core;
+  AMD::GpuAgent* gpu_agent = static_cast<AMD::GpuAgent*>(Runtime::runtime_singleton_->gpu_agents()[0]);
+  HsaClockCounters t;
+  hsaKmtGetClockCounters(gpu_agent->node_id(), &t);
+  *tick = t.GPUClockCounter;
+  *cpu_tick = t.CPUClockCounter;
+  return HSA_STATUS_SUCCESS;
+}
+
 hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
   uint32_t m, uint32_t n, uint32_t k,
   void** pm4_a_buf,

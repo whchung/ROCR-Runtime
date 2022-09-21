@@ -208,6 +208,10 @@ typedef struct {
 hsa_status_t HSA_API hsa_ven_amd_experiment_get_gpu_clock(
   uint64_t* tick); // [out] GPU clock tick
 
+hsa_status_t HSA_API hsa_ven_amd_experiment_get_gpu_cpu_clock(
+  uint64_t* tick,         // [out] GPU clock tick
+  uint64_t* cpu_tick);    // [out] CPU clock tick
+
 hsa_status_t HSA_API hsa_ven_amd_experiment_allocate_pm4_buffers(
   uint32_t m,             // [in] GEMM M
   uint32_t n,             // [in] GEMM N
